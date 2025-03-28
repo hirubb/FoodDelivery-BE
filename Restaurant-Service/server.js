@@ -36,5 +36,5 @@ const restaurantRoutes = require("./routes/restaurantRoutes");
 const restaurantOwnerRoutes = require("./routes/restaurantOwnerRoutes");
 
 // Use restaurant routes
-app.use("/api/restaurants", restaurantRoutes);
+app.use("/api/restaurant", restaurantRoutes);
 app.use("/api/restaurant-owners", restaurantOwnerRoutes);
