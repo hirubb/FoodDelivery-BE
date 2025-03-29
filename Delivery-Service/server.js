@@ -28,6 +28,3 @@ app.listen(PORT, () => {
 });
 
 
-
-MONGO_URI = mongodb + srv://hirunbhathiya:hirun123@food-delivery.rugwm.mongodb.net/
-PORT = 3001
