@@ -13,7 +13,7 @@ const RestaurantSchema = new mongoose.Schema(
     longitude: { type: Number },
     logo: { type: String },
     banner_image: { type: String },
-    cuisine_type: { type: [String], required: true }, //Types of food served (e.g., Italian, Indian)
+    cuisine_type: { type: [String], required: true }, 
     rating: { type: Number, default: 0 },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
   },
