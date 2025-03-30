@@ -5,8 +5,6 @@ const axios = require('axios');
 const registerRestaurant = async (req, res) => {
   try {
     const {name, email, phone, address, city, country, cuisine_type,latitude,longitude } = req.body;
-
-  
     // const { latitude, longitude } = await getCoordinates(address);
 
     const userId = req.userId;
