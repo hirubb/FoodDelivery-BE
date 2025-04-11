@@ -48,30 +48,37 @@ const registerRestaurant = async (req, res) => {
   }
 };
 
-// const getCoordinates = async (address) => {
-//   try {
-//     const apiKey = process.env.GOOGLE_API_KEY;
-//     const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json`, {
-//       params: {
-//         address,
-//         key: apiKey
-//       }
-//     });
+
+
+const myRestaurants = async(req,res)=>{
+
+  try {
+    //get authenticates user id
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(404).json({ message: "Restaurant Owner not found" });
+    }
+    //find all restaurants owned by the user
+    const restaurants = await Restaurant.find({ owner_id: userId });
+
+    if(!restaurants) {
+      return res.status(404).json({
+        message:"Restaurants Not Found"
+      })
+    }
+    return res.status(200).json({ message: "Restaurants found", restaurants });
+
+
     
-//     const data = response.data;
-//     if (data.status === 'OK') {
-//       const { lat, lng } = data.results[0].geometry.location;
-//       return { latitude: lat, longitude: lng };
-//     } else {
-//       throw new Error('Unable to get coordinates');
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     throw new Error('Geocoding API error');
-//   }
-// };
+  } catch (error) {
+    return res.status(500).json({ message: "Server error. Please try again later." });
+  }
+
+}
 
 // Exporting all functions at the end
 module.exports = {
   registerRestaurant,
+  myRestaurants
 };
