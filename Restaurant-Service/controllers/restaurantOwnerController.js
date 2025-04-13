@@ -6,7 +6,7 @@ const bcrypt = require("bcryptjs"); // Add bcrypt to verify the password
 
 const registerRestaurantOwner = async (req, res) => {
   try {
-    const { first_name, last_name, email, username, password, phone, profile_image } = req.body;
+    const { first_name, last_name, email, username, password, phone } = req.body;
 
     const existingOwnerByEmail = await RestaurantOwner.findOne({ email });
     const existingOwnerByUsername = await RestaurantOwner.findOne({ username });
@@ -18,6 +18,8 @@ const registerRestaurantOwner = async (req, res) => {
     if (existingOwnerByUsername) {
       return res.status(400).json({ message: "Username is already taken!" });
     }
+
+    const profile_image = req.file ? req.file.path : null;
 
     const newOwner = new RestaurantOwner({
       first_name,
@@ -52,6 +54,7 @@ const registerRestaurantOwner = async (req, res) => {
     return res.status(500).json({ message: "Server error. Please try again later." });
   }
 };
+
 
 const loginRestaurantOwner = async (req, res) => {
   try {

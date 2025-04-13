@@ -7,6 +7,17 @@ const registerRestaurant = async (req, res) => {
     const {name, email, phone, address, city, country, cuisine_type,latitude,longitude } = req.body;
     // const { latitude, longitude } = await getCoordinates(address);
 
+        // Check if files are uploaded
+        let logoUrl = null;
+        let bannerImageUrl = null;
+        if (req.files && req.files.logo) {
+          logoUrl = req.files.logo[0].path; // Get the file path for logo
+        }
+    
+        if (req.files && req.files.banner_image) {
+          bannerImageUrl = req.files.banner_image[0].path; // Get the file path for banner image
+        }
+
     const userId = req.userId;
     const owner = await RestaurantOwner.findById(userId);
   
@@ -35,6 +46,8 @@ const registerRestaurant = async (req, res) => {
       cuisine_type,
       latitude,
       longitude,
+      logo: logoUrl,
+      banner_image: bannerImageUrl,
     
     });
 

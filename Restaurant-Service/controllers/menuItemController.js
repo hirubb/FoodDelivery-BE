@@ -4,7 +4,9 @@ const Menu = require("../models/Menu");
 // Add a menu item
 exports.createMenuItem = async (req, res) => {
   try {
-    const { menu_id, name, description, portion, price, category, image, available } = req.body;
+    const { menu_id, name, description, portion, price, category, available } = req.body;
+
+    const imageUrls = req.files.map(file => file.path);
 
     const menuItem = new MenuItem({
       menu_id,
@@ -13,7 +15,7 @@ exports.createMenuItem = async (req, res) => {
       portion,
       price,
       category,
-      image,
+      images: imageUrls,
       available
     });
 
@@ -26,7 +28,7 @@ exports.createMenuItem = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-};
+}; 
 
 // Get all menu items for a specific menu
 exports.getMenuItemsByMenu = async (req, res) => {
