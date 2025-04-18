@@ -7,6 +7,17 @@ const registerRestaurant = async (req, res) => {
     const {name, email, phone, address, city, country, cuisine_type,latitude,longitude } = req.body;
     // const { latitude, longitude } = await getCoordinates(address);
 
+        // Check if files are uploaded
+        let logoUrl = null;
+        let bannerImageUrl = null;
+        if (req.files && req.files.logo) {
+          logoUrl = req.files.logo[0].path; // Get the file path for logo
+        }
+    
+        if (req.files && req.files.banner_image) {
+          bannerImageUrl = req.files.banner_image[0].path; // Get the file path for banner image
+        }
+
     const userId = req.userId;
     const owner = await RestaurantOwner.findById(userId);
   
@@ -35,6 +46,8 @@ const registerRestaurant = async (req, res) => {
       cuisine_type,
       latitude,
       longitude,
+      logo: logoUrl,
+      banner_image: bannerImageUrl,
     
     });
 
@@ -44,34 +57,98 @@ const registerRestaurant = async (req, res) => {
 
   } catch (error) {
     console.error("Error registering restaurant:", error);
-    return res.status(500).json({ message: "Server error. Please try again later." });
+  
+    // Handle Mongoose validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
+  
+    // Handle duplicate key error (e.g., unique constraint violation)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0];
+      return res.status(400).json({ message: `Duplicate value for field: ${field}` });
+    }
+  
+    // Default fallback
+    return res.status(500).json({ message: "Internal server error. Please try again later." });
   }
 };
 
-// const getCoordinates = async (address) => {
-//   try {
-//     const apiKey = process.env.GOOGLE_API_KEY;
-//     const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json`, {
-//       params: {
-//         address,
-//         key: apiKey
-//       }
-//     });
+
+
+const myRestaurants = async(req,res)=>{
+
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(404).json({ message: "Restaurant Owner not found" });
+    }
+    //find all restaurants owned by the user
+    const restaurants = await Restaurant.find({ owner_id: userId });
+
+    if(!restaurants) {
+      return res.status(404).json({
+        message:"Restaurants Not Found"
+      })
+    }
+    return res.status(200).json({ message: "Restaurants found", restaurants });
+
+
     
-//     const data = response.data;
-//     if (data.status === 'OK') {
-//       const { lat, lng } = data.results[0].geometry.location;
-//       return { latitude: lat, longitude: lng };
-//     } else {
-//       throw new Error('Unable to get coordinates');
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     throw new Error('Geocoding API error');
-//   }
-// };
+  } catch (error) {
+    return res.status(500).json({ message: "Server error. Please try again later." });
+  }
+
+}
+const getAllRestaurants = async (req, res) => {
+  try {
+    const { searchTerm, cuisine_type } = req.query;
+
+    const filter = {};
+
+    if (searchTerm) {
+      // Match searchTerm with name OR city OR cuisine_type
+      filter.$or = [
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { city: { $regex: searchTerm, $options: 'i' } },
+        { cuisine_type: { $regex: searchTerm, $options: 'i' } }
+      ];
+    }
+
+    if (cuisine_type) {
+      filter.cuisine_type = { $regex: cuisine_type, $options: 'i' };
+    }
+
+    const restaurants = await Restaurant.find(filter);
+
+    if (!restaurants || restaurants.length === 0) {
+      return res.status(404).json({
+        message: "No matching restaurants found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Restaurants fetched successfully",
+      data: restaurants,
+    });
+
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
+
 
 // Exporting all functions at the end
 module.exports = {
   registerRestaurant,
+  myRestaurants,
+  getAllRestaurants
 };
