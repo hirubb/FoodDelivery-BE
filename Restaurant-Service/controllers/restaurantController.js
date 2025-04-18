@@ -57,7 +57,21 @@ const registerRestaurant = async (req, res) => {
 
   } catch (error) {
     console.error("Error registering restaurant:", error);
-    return res.status(500).json({ message: "Server error. Please try again later." });
+  
+    // Handle Mongoose validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
+  
+    // Handle duplicate key error (e.g., unique constraint violation)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0];
+      return res.status(400).json({ message: `Duplicate value for field: ${field}` });
+    }
+  
+    // Default fallback
+    return res.status(500).json({ message: "Internal server error. Please try again later." });
   }
 };
 
