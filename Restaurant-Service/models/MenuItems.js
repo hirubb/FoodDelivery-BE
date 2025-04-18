@@ -8,7 +8,7 @@ const MenuItemSchema = new mongoose.Schema(
     portion: { type: String, enum: ["S", "M", "L"], required: true },
     price: { type: Number, required: true }, // Item price
     category: { type: String, required: true }, // Category (e.g., "Appetizer", "Main Course")
-    image: { type: String }, // URL or path to image for the menu item
+    images: [{ type: String }], // URL or path to image for the menu item
     available: { type: Boolean, default: true }, // If the item is available for ordering
   },
   { timestamps: true }
