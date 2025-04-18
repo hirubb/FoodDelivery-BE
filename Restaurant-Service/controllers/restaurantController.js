@@ -66,7 +66,6 @@ const registerRestaurant = async (req, res) => {
 const myRestaurants = async(req,res)=>{
 
   try {
-    //get authenticates user id
     const userId = req.userId;
 
     if (!userId) {
@@ -89,9 +88,53 @@ const myRestaurants = async(req,res)=>{
   }
 
 }
+const getAllRestaurants = async (req, res) => {
+  try {
+    const { searchTerm, cuisine_type } = req.query;
+
+    const filter = {};
+
+    if (searchTerm) {
+      // Match searchTerm with name OR city OR cuisine_type
+      filter.$or = [
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { city: { $regex: searchTerm, $options: 'i' } },
+        { cuisine_type: { $regex: searchTerm, $options: 'i' } }
+      ];
+    }
+
+    if (cuisine_type) {
+      filter.cuisine_type = { $regex: cuisine_type, $options: 'i' };
+    }
+
+    const restaurants = await Restaurant.find(filter);
+
+    if (!restaurants || restaurants.length === 0) {
+      return res.status(404).json({
+        message: "No matching restaurants found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Restaurants fetched successfully",
+      data: restaurants,
+    });
+
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
+
 
 // Exporting all functions at the end
 module.exports = {
   registerRestaurant,
-  myRestaurants
+  myRestaurants,
+  getAllRestaurants
 };
