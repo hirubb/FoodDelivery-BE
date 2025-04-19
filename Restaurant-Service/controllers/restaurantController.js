@@ -143,12 +143,64 @@ const getAllRestaurants = async (req, res) => {
 };
 
 
+const rateRestaurant = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { rating, review } = req.body;
+    const userId = req.userId;
 
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5.' });
+    }
+
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found.' });
+    }
+
+    // Optional: Prevent the same user from rating multiple times
+    const alreadyRated = restaurant.ratings.find(r => r.userId.toString() === userId);
+    if (alreadyRated) {
+      return res.status(400).json({ message: 'You have already rated this restaurant.' });
+    }
+
+    // Add new rating
+    restaurant.ratings.push({ rating, review });
+
+    // Update average rating
+    const total = restaurant.ratings.reduce((acc, curr) => acc + curr.rating, 0);
+    restaurant.averageRating = total / restaurant.ratings.length;
+
+    await restaurant.save();
+
+    res.status(200).json({ message: 'Rating submitted successfully.', averageRating: restaurant.averageRating });
+  } catch (error) {
+    console.error('Error rating restaurant:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+const getTopRatedRestaurants = async (req, res) => {
+  try {
+    const topRestaurants = await Restaurant.find()
+      .sort({ averageRating: -1 }) 
+      .limit(6); // Only take top 6
+
+    res.status(200).json({
+      message: 'Top rated restaurants fetched successfully.',
+      data: topRestaurants,
+    });
+  } catch (error) {
+    console.error('Error fetching top rated restaurants:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 
 // Exporting all functions at the end
 module.exports = {
   registerRestaurant,
   myRestaurants,
-  getAllRestaurants
+  getAllRestaurants,
+  rateRestaurant,
+  getTopRatedRestaurants
 };

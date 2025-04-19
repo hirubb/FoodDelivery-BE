@@ -36,9 +36,11 @@ const restaurantRoutes = require("./routes/restaurantRoutes");
 const restaurantOwnerRoutes = require("./routes/restaurantOwnerRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 const menuItemRoutes = require("./routes/menuItemRoutes");
+const offerRoutes = require('./routes/offerRoutes');
 
 // Use restaurant routes
 app.use("/api/restaurant", restaurantRoutes);
 app.use("/api/restaurant-owners", restaurantOwnerRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/menu-item", menuItemRoutes);
+app.use('/api/offers', offerRoutes);
