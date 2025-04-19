@@ -1,3 +1,26 @@
-.qodo
+# Node modules
+node_modules/
+
+# Environment variables
 .env
 
+# Package lock file (optional, but usually kept)
+# Uncomment the next line if you DON’T want to track package-lock.json
+# package-lock.json
+
+# VSCode settings (optional)
+.vscode/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Qodo file (not standard - assuming project-specific)
+.qodo
+
+package-lock.json
