@@ -28,3 +28,10 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running at Admin service http://localhost:${PORT}`);
 });
+
+//routes import
+const adminRoutes = require("./routes/AdminRoutes");
+
+
+// Use admin routes
+app.use("/api/admin", adminRoutes);
