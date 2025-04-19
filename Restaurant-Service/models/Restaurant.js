@@ -14,7 +14,18 @@ const RestaurantSchema = new mongoose.Schema(
     logo: { type: String },
     banner_image: { type: String },
     cuisine_type: { type: [String], required: true }, 
-    rating: { type: Number, default: 0 },
+    ratings: [
+      {
+        // userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // or Customer model
+        rating: { type: Number, required: true, min: 1, max: 5 },
+        review: { type: String },
+        ratedAt: { type: Date, default: Date.now }
+      }
+    ],
+    averageRating: {
+      type: Number,
+      default: 0
+    },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
   },
   { timestamps: true }
