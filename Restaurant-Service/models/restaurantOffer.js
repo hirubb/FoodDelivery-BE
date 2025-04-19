@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const restaurantOfferSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
+  discount: { type: Number, required: true },
   code: String,
   validUntil: Date,
   restaurantOwner: {
