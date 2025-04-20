@@ -32,8 +32,8 @@ const registerRestaurantOwner = async (req, res) => {
     });
 
     await newOwner.save();
-
-    const token = jwt.sign({ userId: newOwner._id, role: newOwner.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  
+    const token = jwt.sign({ id: newOwner._id, role: newOwner.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     return res.status(201).json({
       message: "Restaurant Owner registered successfully",
@@ -106,6 +106,7 @@ const loginRestaurantOwner = async (req, res) => {
 const profile = async (req, res) => {
   try {
     const owner = await RestaurantOwner.findById(req.userId).select('-password');
+    console.log("owner : ", owner);
 
     if (!owner) {
       return res.status(404).json({ message: "Restaurant Owner not found" });

@@ -8,7 +8,6 @@ const authenticate = async (req, res, next) => {
   // Retrieve the token from the Authorization header
   const token = req.header("Authorization")?.replace("Bearer ", "");
   
-
   // If no token is found, deny access
   if (!token) {
     return res.status(401).json({ message: "Access denied. No token provided." });
@@ -17,9 +16,11 @@ const authenticate = async (req, res, next) => {
   try {
     // Verify the token using the JWT secret from environment variables
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Token:", token);
+    console.log("🔓 Decoded Token:", decoded);
     
     // Attach user information to the request object
-    req.userId = decoded.userId;
+    req.userId = decoded.id;
     req.role = decoded.role;
     
     // Proceed to the next middleware or route handler
