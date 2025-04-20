@@ -1,11 +1,15 @@
 const RestaurantOwner = require("../models/RestaurantOwner");
 const Restaurant = require("../models/Restaurant");
 const axios = require('axios');
+const getCoordinates = require("../utils/geocode");
 
 const registerRestaurant = async (req, res) => {
   try {
-    const {name, email, phone, address, city, country, cuisine_type,latitude,longitude } = req.body;
+    const {name, email, phone, address, city, country, cuisine_type } = req.body;
     // const { latitude, longitude } = await getCoordinates(address);
+
+    const fullAddress = `${address}, ${city}, ${country}`;
+    const { latitude, longitude } = await getCoordinates(fullAddress);
 
         // Check if files are uploaded
         let logoUrl = null;

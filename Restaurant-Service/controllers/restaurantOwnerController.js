@@ -143,6 +143,58 @@ const getAllUsers = async (req, res) => {
     return res.status(500).json({ message: "Server error while fetching users." });
   }
 };
+const editRestaurantOwner = async (req, res) => {
+  try {
+    const ownerId = req.params.id;
+    const {
+      first_name,
+      last_name,
+      email,
+      username,
+      phone,
+      password, // Optional: only update if provided
+    } = req.body;
+
+    const updateData = {
+      first_name,
+      last_name,
+      email,
+      username,
+      phone,
+    };
+
+    // Handle optional profile image update
+    if (req.file) {
+      updateData.profile_image = req.file.path;
+    }
+
+    // Handle optional password update
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+
+    const updatedOwner = await RestaurantOwner.findByIdAndUpdate(
+      ownerId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedOwner) {
+      return res.status(404).json({ message: "Restaurant Owner not found" });
+    }
+
+    return res.status(200).json({
+      message: "Restaurant Owner updated successfully",
+      owner: updatedOwner,
+    });
+
+  } catch (error) {
+    console.error("Error updating restaurant owner:", error);
+    return res.status(500).json({ message: "Server error. Please try again later." });
+  }
+};
+
 
 
 
@@ -151,6 +203,7 @@ module.exports = {
   registerRestaurantOwner,
   loginRestaurantOwner,
   profile,
-  getAllUsers
+  getAllUsers,
+  editRestaurantOwner
 
 };
