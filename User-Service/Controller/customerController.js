@@ -1,0 +1,108 @@
+require('dotenv').config();
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const Customer = require("../models/Customer");
+
+const registerCustomer = async (req, res) => {
+  try {
+    const { first_name, last_name, email, username, password, phone } = req.body;
+
+    const existingEmail = await Customer.findOne({ email });
+    const existingUsername = await Customer.findOne({ username });
+
+    if (existingEmail) return res.status(400).json({ message: "Email is already registered!" });
+    if (existingUsername) return res.status(400).json({ message: "Username is already taken!" });
+
+    const newCustomer = new Customer({
+      first_name,
+      last_name,
+      email,
+      username,
+      password,
+      phone,
+    });
+
+    await newCustomer.save();
+
+    const token = jwt.sign({ id: newCustomer._id, role: newCustomer.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    return res.status(201).json({
+      message: "Customer registered successfully",
+      customer: {
+        first_name: newCustomer.first_name,
+        last_name: newCustomer.last_name,
+        email: newCustomer.email,
+        username: newCustomer.username,
+        phone: newCustomer.phone,
+        role: newCustomer.role,
+      },
+      token,
+    });
+
+  } catch (error) {
+    console.error("Registration error:", error);
+    return res.status(500).json({ message: "Server error. Please try again later." });
+  }
+};
+
+const loginCustomer = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const customer = await Customer.findOne({ email });
+    if (!customer) return res.status(400).json({ message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, customer.password);
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+
+    const token = jwt.sign({ userId: customer._id, role: customer.role }, process.env.JWT_SECRET);
+
+    return res.status(200).json({
+      message: "Login successful",
+      customer: {
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        email: customer.email,
+        username: customer.username,
+        phone: customer.phone,
+        role: customer.role,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ message: "Server error. Please try again later." });
+  }
+};
+
+const profile = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.userId).select('-password');
+    if (!customer) return res.status(404).json({ message: "Customer not found" });
+
+    return res.status(200).json({ customer });
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    return res.status(500).json({ message: "Server error." });
+  }
+};
+
+const getAllCustomers = async (req, res) => {
+  try {
+    const customers = await Customer.find();
+    if (!customers || customers.length === 0) {
+      return res.status(404).json({ message: "No customers found." });
+    }
+    return res.status(200).json({ customers });
+  } catch (error) {
+    console.error("Error fetching customers:", error);
+    return res.status(500).json({ message: "Server error while fetching customers." });
+  }
+};
+
+module.exports = {
+  registerCustomer,
+  loginCustomer,
+  profile,
+  getAllCustomers,
+};
