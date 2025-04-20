@@ -32,7 +32,7 @@ const registerAdmin = async (req, res) => {
   
       await newOwner.save();
   
-      const token = jwt.sign({ userId: newOwner._id, role: newOwner.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign({ userId: newOwner._id, role: newOwner.role }, process.env.JWT_SECRET);
   
       return res.status(201).json({
         message: "Admin registered successfully",
@@ -99,9 +99,36 @@ const registerAdmin = async (req, res) => {
       return res.status(500).json({ message: "Server error. Please try again later." });
     }
   };
+
+  const profile = async (req, res) => {
+    try {
+      const admin = await Admin.findById(req.userId).select('-password');
+  
+      if (!admin) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
+  
+      return res.status(200).json({
+        admin: {
+          first_name: admin.first_name,
+          last_name: admin.last_name,
+          email: admin.email,
+          username: admin.username,
+          phone: admin.phone,
+          role: admin.role,
+          profile_image: admin.profile_image,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      return res.status(500).json({ message: "Server error. Please try again later." });
+    }
+  };
+  
   
   module.exports = {
     registerAdmin,
-    loginAdmin
+    loginAdmin,
+    profile,
   
   };

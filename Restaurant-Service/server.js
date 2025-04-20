@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
 // Connect to MongoDB
 mongoose
   .connect(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(() => console.log("✅ Connected too MongoDB"))
   .catch((err) => console.error("❌ Could not connect to MongoDB:", err));
 
 // Sample route
