@@ -18,7 +18,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Attach user information to the request object
-    req.userId = decoded.userId;
+    req.userId = decoded.id;
     req.role = decoded.role;
     
 
