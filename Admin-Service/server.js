@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
 // Connect to MongoDB
 mongoose
   .connect(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ Connected too MongoDB"))
+  .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ Could not connect to MongoDB:", err));
 
 // Sample route
@@ -26,21 +26,12 @@ app.get("/", (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running at Admin service http://localhost:${PORT}`);
 });
 
-
-
 //routes import
-const restaurantRoutes = require("./routes/restaurantRoutes");
-const restaurantOwnerRoutes = require("./routes/restaurantOwnerRoutes");
-const menuRoutes = require("./routes/menuRoutes");
-const menuItemRoutes = require("./routes/menuItemRoutes");
-const offerRoutes = require('./routes/offerRoutes');
+const adminRoutes = require("./routes/AdminRoutes");
 
-// Use restaurant routes
-app.use("/api/restaurant", restaurantRoutes);
-app.use("/api/restaurant-owners", restaurantOwnerRoutes);
-app.use("/api/menu", menuRoutes);
-app.use("/api/menu-item", menuItemRoutes);
-app.use('/api/offers', offerRoutes);
+
+// Use admin routes
+app.use("/api/admin", adminRoutes);

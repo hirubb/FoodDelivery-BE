@@ -1,3 +1,7 @@
 .qodo
 .env
 node_modules/
+package*
+README.md
+
+
