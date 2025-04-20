@@ -2,16 +2,19 @@ const axios = require('axios');
 const Payment = require('../models/paymentModel');
 const crypto = require('crypto');
 
+// STEP 1: Initiate payment (Send data to frontend → redirect to PayHere)
 const initiatePayment = async (req, res) => {
   try {
     const { orderId, amount, customer } = req.body;
 
+    // Save initial payment record
     const newPayment = await Payment.create({
       orderId,
       amount,
       customer,
     });
 
+    // Prepare payment payload for PayHere
     const data = {
       merchant_id: process.env.PAYHERE_MERCHANT_ID,
       return_url: process.env.PAYHERE_RETURN_URL,
@@ -32,7 +35,7 @@ const initiatePayment = async (req, res) => {
 
     res.status(200).json({
       status: "success",
-      message: "Redirect user to PayHere",
+      message: "Redirect to PayHere",
       paymentURL: "https://sandbox.payhere.lk/pay/checkout",
       payload: data
     });
@@ -42,6 +45,7 @@ const initiatePayment = async (req, res) => {
   }
 };
 
+// STEP 2: Handle callback (from PayHere → update status)
 const handleCallback = async (req, res) => {
   try {
     const {
@@ -58,24 +62,23 @@ const handleCallback = async (req, res) => {
       return res.status(404).send('Payment record not found.');
     }
 
-    // Generate server-side signature to verify
-    const generatedSig = crypto
+    const localSecret = crypto.createHash('md5').update(process.env.PAYHERE_SECRET).digest("hex");
+
+    const expectedSig = crypto
       .createHash('md5')
-      .update(
-        `${merchant_id}${order_id}${localPayment.amount}${status_code}${crypto.createHash('md5').update(process.env.PAYHERE_SECRET).digest("hex")}`
-      )
+      .update(`${merchant_id}${order_id}${localPayment.amount}${status_code}${localSecret}`)
       .digest("hex")
       .toUpperCase();
 
-    if (generatedSig !== md5sig) {
-      return res.status(400).send('Invalid signature.');
+    if (expectedSig !== md5sig) {
+      return res.status(400).send('Invalid signature. Possible tampering.');
     }
 
     localPayment.status = status_code === '2' ? 'paid' : 'failed';
     localPayment.payhereData = req.body;
     await localPayment.save();
 
-    return res.status(200).send('Payment updated.');
+    return res.status(200).send('Payment status updated successfully.');
   } catch (err) {
     res.status(500).send(err.message);
   }

@@ -9,11 +9,13 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Routes
 app.use('/api/payments', paymentRoutes);
 
-// 🔧 Removed deprecated options
+// MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB Atlas connected successfully!'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch(err => console.error('❌ MongoDB error:', err));
 
 module.exports = app;
