@@ -81,6 +81,7 @@ const loginRestaurantOwner = async (req, res) => {
       { userId: owner._id, role: owner.role },
       process.env.JWT_SECRET
     );
+    
 
     // Respond with the token and user details
     return res.status(200).json({
@@ -127,6 +128,20 @@ const profile = async (req, res) => {
   }
 };
 
+//get all users
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await RestaurantOwner.find();
+    if (!users || users.length === 0) {
+      return res.status(404).json({ message: "No users found." });
+    }
+
+    return res.status(200).json({ users });
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    return res.status(500).json({ message: "Server error while fetching users." });
+  }
+};
 
 
 
@@ -134,6 +149,7 @@ const profile = async (req, res) => {
 module.exports = {
   registerRestaurantOwner,
   loginRestaurantOwner,
-  profile
+  profile,
+  getAllUsers
 
 };

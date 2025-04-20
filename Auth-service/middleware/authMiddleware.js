@@ -7,7 +7,6 @@ dotenv.config();
 const authenticate = async (req, res, next) => {
   // Retrieve the token from the Authorization header
   const token = req.header("Authorization")?.replace("Bearer ", "");
-  
 
   // If no token is found, deny access
   if (!token) {
@@ -17,11 +16,12 @@ const authenticate = async (req, res, next) => {
   try {
     // Verify the token using the JWT secret from environment variables
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Attach user information to the request object
     req.userId = decoded.userId;
     req.role = decoded.role;
     
+
     // Proceed to the next middleware or route handler
     next();
   } catch (error) {
