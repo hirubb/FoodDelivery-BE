@@ -10,7 +10,7 @@ app.use(express.json());
 
 // app.js
 app.use("/orders", orderRoutes);
-app.get('/test', (req, res) => res.send('Server is working'));
+
 
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,

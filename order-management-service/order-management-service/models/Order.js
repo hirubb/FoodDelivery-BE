@@ -19,6 +19,11 @@ const orderSchema = new mongoose.Schema({
     enum: ["Unpaid", "Paid"],
     default: "Unpaid",
   },
+  orderId: {
+    type: String,
+    unique: true
+  }
+  
 });
 
 module.exports = mongoose.model("Order", orderSchema);
