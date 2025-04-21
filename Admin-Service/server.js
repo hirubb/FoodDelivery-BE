@@ -31,7 +31,9 @@ app.listen(PORT, () => {
 
 //routes import
 const adminRoutes = require("./routes/AdminRoutes");
+const systemOfferRoutes = require('./routes/SystemOfferRoutes');
 
 
 // Use admin routes
 app.use("/api/admin", adminRoutes);
+app.use("/api/system-offers", systemOfferRoutes)
