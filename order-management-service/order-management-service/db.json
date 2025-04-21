@@ -1,9 +1,0 @@
-{
-    "restaurants": [
-      { "id": "rest1", "name": "Pizza Hut" }
-    ],
-    "menu": [
-      { "id": "item1", "name": "Margherita", "restaurantId": "rest1" }
-    ]
-  }
-  
