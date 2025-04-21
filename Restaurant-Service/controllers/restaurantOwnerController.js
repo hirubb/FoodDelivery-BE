@@ -114,6 +114,7 @@ const profile = async (req, res) => {
 
     return res.status(200).json({
       owner: {
+        id: owner._id,
         first_name: owner.first_name,
         last_name: owner.last_name,
         email: owner.email,
@@ -194,10 +195,6 @@ const editRestaurantOwner = async (req, res) => {
     return res.status(500).json({ message: "Server error. Please try again later." });
   }
 };
-
-
-
-
 
 module.exports = {
   registerRestaurantOwner,

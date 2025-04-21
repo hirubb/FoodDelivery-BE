@@ -198,6 +198,24 @@ const getTopRatedRestaurants = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+const getRestaurantById = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const restaurant = await Restaurant.findById(restaurantId);
+
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found.' });
+    }
+
+    res.status(200).json({
+      message: "Restaurant found successfully.",
+      data: restaurant
+    });
+  } catch (error) {
+    console.error('Error fetching restaurant by ID:', error);
+    res.status(500).json({ message: 'Server error while fetching restaurant.' });
+  }
+};
 
 
 // Exporting all functions at the end
@@ -206,5 +224,6 @@ module.exports = {
   myRestaurants,
   getAllRestaurants,
   rateRestaurant,
-  getTopRatedRestaurants
+  getTopRatedRestaurants,
+  getRestaurantById
 };

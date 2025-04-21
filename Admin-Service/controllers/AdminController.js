@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 const bcrypt = require("bcryptjs"); // Add bcrypt to verify the password
 
+
+
 const registerAdmin = async (req, res) => {
     try {
       const { first_name, last_name, email, username, password, phone } = req.body;
@@ -139,12 +141,33 @@ const registerAdmin = async (req, res) => {
     }
   };
   
+  const axios = require("axios");
+
+const getAllRestaurantOwners = async (req, res) => {
+  try {
+    // Replace with the actual URL of your Restaurant-Service
+    const restaurantServiceURL = "http://localhost:4000/api/restaurant-owners/"; // example endpoint
+
+    const response = await axios.get(restaurantServiceURL);
+
+    return res.status(200).json({
+      message: "Fetched restaurant owners successfully",
+      restaurantOwners: response.data
+    });
+
+  } catch (error) {
+    console.error("Error fetching restaurant owners:", error.message);
+    return res.status(500).json({ message: "Failed to fetch restaurant owners" });
+  }
+};
+
   
   
   module.exports = {
     registerAdmin,
     loginAdmin,
     profile,
-    getAllUsers
+    getAllUsers,
+    getAllRestaurantOwners
   
   };
