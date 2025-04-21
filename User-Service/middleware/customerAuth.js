@@ -16,15 +16,24 @@ const authenticateCustomer = async (req, res, next) => {
     console.log("🔐 Customer Token:", token);
     console.log("🪪 Decoded Customer Token:", decoded);
 
+    // Check if decoded contains either id or userId property
+    const userId = decoded.id || decoded._id;
+    
+    if (!userId) {
+      return res.status(400).json({ message: "Invalid token structure." });
+    }
+
     if (decoded.role !== "Customer") {
       return res.status(403).json({ message: "Access denied. Invalid role." });
     }
 
-    req.userId = decoded.id;
+    // Set userId consistently
+    req.userId = userId;
     req.role = decoded.role;
 
     next();
   } catch (error) {
+    console.error("Auth middleware error:", error);
     return res.status(400).json({ message: "Invalid or expired token." });
   }
 };

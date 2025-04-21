@@ -55,7 +55,11 @@ const loginCustomer = async (req, res) => {
     const isMatch = await bcrypt.compare(password, customer.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ userId: customer._id, role: customer.role }, process.env.JWT_SECRET);
+    // Make sure we're consistent with the id field name
+    const token = jwt.sign({ 
+      id: customer._id, 
+      role: customer.role 
+    }, process.env.JWT_SECRET);
 
     return res.status(200).json({
       message: "Login successful",
@@ -77,32 +81,44 @@ const loginCustomer = async (req, res) => {
 
 const profile = async (req, res) => {
   try {
+    console.log("Looking for customer with ID:", req.userId);
+    
     const customer = await Customer.findById(req.userId).select('-password');
-    if (!customer) return res.status(404).json({ message: "Customer not found" });
+    
+    if (!customer) {
+      console.log("No customer found with ID:", req.userId);
+      return res.status(404).json({ message: "Customer not found" });
+    }
 
+    console.log("Customer found:", customer);
     return res.status(200).json({ customer });
   } catch (error) {
     console.error("Profile fetch error:", error);
+    if (error.kind === 'ObjectId') {
+      return res.status(400).json({ message: "Invalid customer ID format" });
+    }
     return res.status(500).json({ message: "Server error." });
   }
 };
 
-const getAllCustomers = async (req, res) => {
+const getAllUsers = async (req, res) => {
   try {
-    const customers = await Customer.find();
-    if (!customers || customers.length === 0) {
-      return res.status(404).json({ message: "No customers found." });
+    const users = await Customer.find();
+    if (!users || users.length === 0) {
+      return res.status(404).json({ message: "No users found." });
     }
-    return res.status(200).json({ customers });
+
+    return res.status(200).json({ users });
   } catch (error) {
-    console.error("Error fetching customers:", error);
-    return res.status(500).json({ message: "Server error while fetching customers." });
+    console.error("Error fetching all users:", error);
+    return res.status(500).json({ message: "Server error while fetching users." });
   }
 };
+
 
 module.exports = {
   registerCustomer,
   loginCustomer,
   profile,
-  getAllCustomers,
+  getAllUsers,
 };
