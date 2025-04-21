@@ -196,10 +196,6 @@ const editRestaurantOwner = async (req, res) => {
   }
 };
 
-
-
-
-
 module.exports = {
   registerRestaurantOwner,
   loginRestaurantOwner,
