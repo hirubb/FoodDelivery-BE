@@ -6,7 +6,7 @@ const bcrypt = require("bcryptjs"); // Add bcrypt to verify the password
 
 const registerRestaurantOwner = async (req, res) => {
   try {
-    const { first_name, last_name, email, username, password, phone } = req.body;
+    const { first_name, last_name, email, username, password, phone,nic } = req.body;
 
     const existingOwnerByEmail = await RestaurantOwner.findOne({ email });
     const existingOwnerByUsername = await RestaurantOwner.findOne({ username });
@@ -29,6 +29,7 @@ const registerRestaurantOwner = async (req, res) => {
       password,
       phone,
       profile_image,
+      nic
     });
 
     await newOwner.save();
@@ -45,6 +46,7 @@ const registerRestaurantOwner = async (req, res) => {
         phone: newOwner.phone,
         role: newOwner.role,
         profile_image: newOwner.profile_image,
+        nic: newOwner.nic
       },
       token,
     });
@@ -122,6 +124,7 @@ const profile = async (req, res) => {
         phone: owner.phone,
         role: owner.role,
         profile_image: owner.profile_image,
+        nic: owner.nic,
       }
     });
   } catch (error) {
@@ -153,7 +156,8 @@ const editRestaurantOwner = async (req, res) => {
       email,
       username,
       phone,
-      password, // Optional: only update if provided
+      nic,
+      password, 
     } = req.body;
 
     const updateData = {
@@ -162,6 +166,7 @@ const editRestaurantOwner = async (req, res) => {
       email,
       username,
       phone,
+      nic,
     };
 
     // Handle optional profile image update

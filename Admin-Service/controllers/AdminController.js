@@ -161,13 +161,62 @@ const getAllRestaurantOwners = async (req, res) => {
   }
 };
 
-  
-  
+const getAllRestauants = async(req, res)=>{
+
+  try {
+    // Replace with the actual URL of your Restaurant-Service
+    const restaurantServiceURL = "http://localhost:4000/api/restaurant/"; 
+
+    const response = await axios.get(restaurantServiceURL);
+
+    return res.status(200).json({
+      message: "Fetched restaurants successfully",
+      restaurants: response.data
+    });
+
+  } catch (error) {
+    console.error("Error fetching restaurants:", error.message);
+    return res.status(500).json({ message: "Failed to fetch restaurants" });
+  }
+}
+const approveRestaurant = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const restaurantServiceURL = `http://localhost:4000/api/restaurant/${restaurantId}`; 
+
+    // Fetch the restaurant first
+    const response = await axios.get(restaurantServiceURL);
+    const restaurantData = response.data;
+
+    if (!restaurantData) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Update the status to "approved"
+    const updateURL = `http://localhost:4000/api/restaurant/${restaurantId}/status/update`;
+    const statusResponse = await axios.patch(updateURL, { status: "approved" });
+
+    return res.status(200).json({
+      message: "Restaurant approved successfully",
+      data: statusResponse.data
+    });
+
+  } catch (error) {
+    console.error("Error approving restaurant:", error.message);
+    return res.status(500).json({ message: "Failed to approve restaurant" });
+  }
+};
+
+
+
+
   module.exports = {
     registerAdmin,
     loginAdmin,
     profile,
     getAllUsers,
-    getAllRestaurantOwners
+    getAllRestaurantOwners,
+    getAllRestauants,
+    approveRestaurant
   
   };
