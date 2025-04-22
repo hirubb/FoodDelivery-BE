@@ -2,25 +2,54 @@
 const crypto = require('crypto');
 const axios = require('axios');
 const Payment = require('../models/paymentModel');
+const messageQueue = require('../utils/messageQueue');
 
 // Initialize payment with PayHere
 exports.initializePayment = async (req, res) => {
   try {
     const { orderId, customerId, amount, items, customerDetails } = req.body;
     
-    if (!orderId || !customerId || !amount || amount <= 0) {
-      return res.status(400).json({ message: 'Invalid payment details' });
+    // Validate required parameters
+    if (!orderId) {
+      return res.status(400).json({ message: 'Order ID is required' });
     }
-
-    // Create a new payment record
-    const payment = new Payment({
+    
+    if (!customerId) {
+      return res.status(400).json({ message: 'Customer ID is required' });
+    }
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: 'Valid amount is required' });
+    }
+    
+    if (!customerDetails || !customerDetails.first_name || !customerDetails.email) {
+      return res.status(400).json({ message: 'Customer details are incomplete' });
+    }
+    
+    // Check if payment already exists for this order
+    const existingPayment = await Payment.findOne({ 
+      orderId, 
+      status: { $in: ['PENDING', 'COMPLETED'] }
+    });
+    
+    if (existingPayment && existingPayment.status === 'COMPLETED') {
+      return res.status(400).json({ 
+        message: 'This order has already been paid for',
+        paymentId: existingPayment._id
+      });
+    }
+    
+    // Use existing payment if pending, create new one if none exists
+    const payment = existingPayment || new Payment({
       orderId,
       customerId,
       amount,
       status: 'PENDING'
     });
     
-    await payment.save();
+    if (!existingPayment) {
+      await payment.save();
+    }
     
     // Construct PayHere request data
     const paymentData = {
@@ -33,9 +62,9 @@ exports.initializePayment = async (req, res) => {
       currency: 'LKR',
       amount: amount.toString(),
       first_name: customerDetails.first_name,
-      last_name: customerDetails.last_name,
+      last_name: customerDetails.last_name || '',
       email: customerDetails.email,
-      phone: customerDetails.phone,
+      phone: customerDetails.phone || '',
       address: customerDetails.address || 'N/A', // Optional
       city: customerDetails.city || 'N/A',       // Optional
       country: customerDetails.country || 'Sri Lanka' // Default
@@ -64,11 +93,18 @@ exports.paymentCallback = async (req, res) => {
   try {
     const paymentData = req.body;
     
+    console.log('Received PayHere notification:', paymentData);
+    
+    // Always respond quickly to PayHere to acknowledge receipt
+    // This prevents PayHere from retrying the notification
+    res.status(200).send('Payment notification received');
+    
     // Verify the authenticity of the notification (for production)
     if (process.env.NODE_ENV === 'production') {
       const isValid = verifyPayHereNotification(paymentData);
       if (!isValid) {
-        return res.status(400).json({ message: 'Invalid payment notification' });
+        console.error('Invalid payment notification, possible security issue:', paymentData);
+        return; // Already sent 200 response, but don't process this notification
       }
     }
     
@@ -76,7 +112,8 @@ exports.paymentCallback = async (req, res) => {
     const payment = await Payment.findById(paymentData.order_id);
     
     if (!payment) {
-      return res.status(404).json({ message: 'Payment not found' });
+      console.error('Payment not found for order ID:', paymentData.order_id);
+      return;
     }
     
     // Update payment status based on PayHere status code
@@ -91,16 +128,27 @@ exports.paymentCallback = async (req, res) => {
     // If payment is completed successfully, update order status via Order service
     if (paymentStatus === 'COMPLETED') {
       try {
+        const messageQueue = require('../utils/messageQueue');
+        
+        // Update order via direct API call
         await updateOrderStatus(payment.orderId, 'PAID');
+        
+        // Also publish to message queue for asynchronous processing
+        await messageQueue.publishToQueue('payment_notifications', {
+          orderId: payment.orderId,
+          paymentId: payment._id,
+          status: paymentStatus,
+          amount: payment.amount
+        });
+        
+        console.log(`Payment ${payment._id} completed successfully for order ${payment.orderId}`);
       } catch (orderError) {
         console.error('Failed to update order status:', orderError);
       }
     }
-    
-    res.status(200).send('Payment notification received');
   } catch (error) {
     console.error('Payment callback error:', error);
-    res.status(500).json({ message: 'Payment callback processing failed', error: error.message });
+    // We've already sent a 200 response to PayHere, so just log the error
   }
 };
 
@@ -165,8 +213,10 @@ function generatePayHereHash(data, merchantSecret) {
   const amount = data.amount;
   const currency = data.currency;
   
-  const hashString = `${merchantId}${orderId}${amount}${currency}${merchantSecret}`;
-  return crypto.createHash('md5').update(hashString).digest('hex');
+  const hashString = merchantId + orderId + amount + currency + 
+    crypto.createHash('md5').update(merchantSecret).digest('hex').toUpperCase();
+  
+  return crypto.createHash('md5').update(hashString).digest('hex').toUpperCase();
 }
 
 // Helper function to verify PayHere notification
@@ -181,7 +231,7 @@ function verifyPayHereNotification(data) {
   const md5sig = data.md5sig;
   
   const localHash = crypto.createHash('md5')
-    .update(merchantId + orderId + paymentId + amount + currency + statusCode + 
+    .update(merchantId + orderId + amount + currency + statusCode + 
            crypto.createHash('md5').update(merchantSecret).digest('hex').toUpperCase())
     .digest('hex').toUpperCase();
   

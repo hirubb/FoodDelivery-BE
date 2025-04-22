@@ -1,13 +1,12 @@
-// routes/paymentRoutes.js
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
-const auth = require('../middleware/auth');
+const auth = require('../middleware/authMiddleware'); // Use the unified middleware
 
 // Initialize a new payment
 router.post('/initialize', auth, paymentController.initializePayment);
 
-// PayHere callback notification endpoint
+// PayHere callback notification endpoint - no auth required as it's called by PayHere
 router.post('/callback', paymentController.paymentCallback);
 
 // Get payment status by ID

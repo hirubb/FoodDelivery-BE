@@ -1,24 +1,27 @@
-// middleware/auth.js
+// Payment-Service/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
   try {
-    // Log to help debug
-    console.log('Authorization header:', req.headers.authorization);
-    
+    // Get token from Authorization header (Bearer token)
     const token = req.headers.authorization?.split(' ')[1];
     
     if (!token) {
       return res.status(401).json({ message: 'Authentication failed: No token provided' });
     }
     
-    console.log('JWT Secret exists:', !!process.env.JWT_SECRET);
-    console.log('Token being verified:', token.substring(0, 20) + '...');
-    
     try {
+      // Verify token with the same JWT_SECRET used in Auth service
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Successfully decoded token:', decoded);
+      
+      // Store the decoded token data
       req.userData = decoded;
+      
+      // Extract user ID from token (handle both 'id' and 'userId' formats)
+      req.userId = decoded.id || decoded._id || decoded.userId;
+      req.role = decoded.role;
+      
+      // Continue to the next middleware or route handler
       next();
     } catch (verifyError) {
       console.error('JWT verification error:', verifyError.message);
