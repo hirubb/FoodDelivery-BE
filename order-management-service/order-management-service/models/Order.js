@@ -1,7 +1,11 @@
 const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema({
-  customerId: String,
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'Customer'
+  },
   restaurantId: String,
   items: [
     {
@@ -26,4 +30,12 @@ const orderSchema = new mongoose.Schema({
   
 });
 
+
+// Add validation middleware
+orderSchema.pre('save', async function(next) {
+  if (!mongoose.Types.ObjectId.isValid(this.customerId)) {
+    throw new Error('Invalid customer ID format');
+  }
+  next();
+});
 module.exports = mongoose.model("Order", orderSchema);
