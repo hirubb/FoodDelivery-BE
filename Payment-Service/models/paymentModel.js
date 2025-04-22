@@ -1,15 +1,43 @@
+// models/paymentModel.js
 const mongoose = require('mongoose');
 
-const paymentSchema = new mongoose.Schema({
-  orderId: { type: String, required: true, unique: true },
-  customer: {
-    name: String,
-    email: String,
-    phone: String,
+const PaymentSchema = new mongoose.Schema(
+  {
+    orderId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      required: true,
+      ref: 'Order'
+    },
+    customerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: 'Customer'
+    },
+    amount: { 
+      type: Number, 
+      required: true 
+    },
+    currency: { 
+      type: String, 
+      default: 'LKR' 
+    },
+    status: { 
+      type: String, 
+      enum: ['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'],
+      default: 'PENDING' 
+    },
+    paymentMethod: { 
+      type: String, 
+      default: 'PayHere' 
+    },
+    paymentReference: { 
+      type: String 
+    },
+    transactionDetails: { 
+      type: Object 
+    }
   },
-  amount: Number,
-  status: { type: String, default: 'pending' }, // pending, paid, failed
-  payhereData: Object
-}, { timestamps: true });
+  { timestamps: true }
+);
 
-module.exports = mongoose.model('Payment', paymentSchema);
+module.exports = mongoose.model('Payment', PaymentSchema);
