@@ -6,14 +6,22 @@ const RestaurantSchema = new mongoose.Schema(
     name: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String, required: true },
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    country: { type: String, required: true },
+
+    street:{ type: String, required: true },
+    city:{ type: String, required: true },
+    state:{ type: String, required: true },
+    postal_code:{ type: String, required: true },
+    country: { type: String, required: true ,default:"Sri Lanka"},
     latitude: { type: Number },
     longitude: { type: Number },
+
     logo: { type: String },
     banner_image: { type: String },
-    cuisine_type: { type: [String], required: true }, 
+
+    cuisine_type: { type: [String], required: true },
+    license:{type: String, required: true} ,
+    opDays:{type: [String], required: true},
+    opHrs:{ type: [String], required: true },
     ratings: [
       {
         // userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // or Customer model

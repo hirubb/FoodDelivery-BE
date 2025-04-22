@@ -7,6 +7,7 @@ const authenticateToken = require('../middleware/authMiddleware'); // Import the
 router.post('/', authenticateToken, offerController.createOffer); // Protect this route
 router.get('/', offerController.getAllOffers);
 router.get('/restaurant', offerController.getAllRestaurantOffers);
+router.get('/restaurant/:restaurantId',authenticateToken ,offerController.getOffersByRestaurantId);
 
 
 module.exports = router;

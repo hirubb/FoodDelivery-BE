@@ -87,5 +87,39 @@ exports.createOffer = async (req, res) => {
   };
 
 
+ // Get offers by restaurant ID
+exports.getOffersByRestaurantId = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const restaurantId = req.params.restaurantId;
+
+    // Ensure the user is a restaurant owner
+    if (req.role !== 'Restaurant Owner') {
+      return res.status(403).json({ success: false, message: 'Unauthorized: Only restaurant owners can view this.' });
+    }
+
+    // Check if the restaurant exists and belongs to the current user
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+    }
+
+    if (restaurant.owner_id.toString() !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: This restaurant does not belong to you.' });
+    }
+
+    // Fetch offers linked to the restaurant
+    const offers = await RestaurantOffer.find({ restaurant: restaurantId })
+      .populate('restaurant')
+      .populate('restaurantOwner');
+
+    res.json({ success: true, data: offers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
 
 

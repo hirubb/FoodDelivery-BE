@@ -5,10 +5,10 @@ const getCoordinates = require("../utils/geocode");
 
 const registerRestaurant = async (req, res) => {
   try {
-    const {name, email, phone, address, city, country, cuisine_type } = req.body;
+    const {name, email, phone, street,state,postal_code, license,opHrs,opDays,city, country, cuisine_type } = req.body;
     // const { latitude, longitude } = await getCoordinates(address);
 
-    const fullAddress = `${address}, ${city}, ${country}`;
+    const fullAddress = `${street}, ${city}, ${state},${country}`;
     const { latitude, longitude } = await getCoordinates(fullAddress);
 
         // Check if files are uploaded
@@ -32,7 +32,7 @@ const registerRestaurant = async (req, res) => {
     }
 
     // Check if the restaurant already exists with the same name and address
-    const existingRestaurant = await Restaurant.findOne({ name, address });
+    const existingRestaurant = await Restaurant.findOne({ name, fullAddress });
 
     if (existingRestaurant) {
       return res.status(400).json({ message: "Restaurant with this name or address already exists!" });
@@ -44,14 +44,19 @@ const registerRestaurant = async (req, res) => {
       name,
       email,
       phone,
-      address,
       city,
+      street,
+      state,
+      postal_code,
+      license,
+      opHrs,
       country,
       cuisine_type,
       latitude,
       longitude,
       logo: logoUrl,
       banner_image: bannerImageUrl,
+      opDays
     
     });
 
@@ -217,6 +222,27 @@ const getRestaurantById = async (req, res) => {
   }
 };
 
+const updateStatus = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const restaurant = await Restaurant.findById(restaurantId);
+
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found.' });
+    }
+
+    // If `status` is a string
+    restaurant.status = "approved";
+    await restaurant.save();
+
+    res.status(200).json({ message: 'Status updated successfully.', status: restaurant.status });
+  } catch (error) {
+    console.error("Error updating status:", error.message);
+    res.status(500).json({ message: 'Server error while updating status.' });
+  }
+};
+
+
 
 // Exporting all functions at the end
 module.exports = {
@@ -225,5 +251,6 @@ module.exports = {
   getAllRestaurants,
   rateRestaurant,
   getTopRatedRestaurants,
-  getRestaurantById
+  getRestaurantById,
+  updateStatus
 };
