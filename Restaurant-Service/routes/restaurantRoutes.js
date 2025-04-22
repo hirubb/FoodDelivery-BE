@@ -10,12 +10,14 @@ router.post("/register", authenticate, upload.fields([{ name: 'logo' }, { name: 
 router.get("/my-restaurants",authenticate, myRestaurants)
 router.get("/",getAllRestaurants)
 
-router.get("/:restaurantId", getRestaurantById);// order management service will call this endpoint to get restaurant details(Dulmi)
-router.get("/:restaurantId/menu", menuController.getMenusByRestaurant);// order management service will call this endpoint to get restaurant menu(Dulmi)
-
-router.post('/:restaurantId/rate', authenticate, rateRestaurant);
 router.get('/top-rated', getTopRatedRestaurants);
+router.post('/:restaurantId/rate', authenticate, rateRestaurant);
 router.get("/:restaurantId",getRestaurantById)
 router.patch("/:restaurantId/status/update",updateStatus)
+
+// order management service will call this endpoint to get restaurant details(Dulmi)
+router.get("/:restaurantId/menu", menuController.getMenusByRestaurant);// order management service will call this endpoint to get restaurant menu(Dulmi)
+
+
 
 module.exports = router;
