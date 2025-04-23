@@ -1,5 +1,7 @@
 const VehicleWithUser = require('../Models/Driver');
 const bcrypt = require('bcryptjs');
+const { uploadToCloudinary } = require('../Utils/Cloudinary');
+
 
 
 
@@ -25,9 +27,8 @@ exports.getAllDrivers = async (req, res) => {
 
 exports.getDriverById = async (req, res) => {
     try {
-        const { driverId } = req.params;
 
-        const driver = await VehicleWithUser.findById(driverId);
+        const driver = await VehicleWithUser.findById(req.user._id);
         if (!driver) {
             return res.status(404).json({ message: 'Driver not found' });
         }
@@ -46,13 +47,13 @@ exports.getDriverById = async (req, res) => {
 // 4. Update a driver's details
 exports.updateDriver = async (req, res) => {
     try {
-        const { driverId } = req.params;
+
         const {
             firstName, lastName, email, password, mobile, age, gender,
         } = req.body;
 
         // Find the driver by ID
-        let driver = await VehicleWithUser.findById(driverId);
+        let driver = await VehicleWithUser.findById(req.user._id);
         if (!driver) {
             return res.status(404).json({ message: 'Driver not found' });
         }
@@ -61,7 +62,7 @@ exports.updateDriver = async (req, res) => {
         if (firstName) driver.user.firstName = firstName;
         if (lastName) driver.user.lastName = lastName;
         if (email) driver.user.email = email;
-        if (password) driver.user.password = await bcrypt.hash(password, 8);  // Hash the password if updated
+        if (password) driver.user.password = await bcrypt.hash(password, 8);
         if (mobile) driver.user.mobile = mobile;
         if (age) driver.user.age = age;
         if (gender) driver.user.gender = gender;
@@ -82,12 +83,52 @@ exports.updateDriver = async (req, res) => {
 };
 
 
+
+exports.UpdateDriverProfileImage = async (req, res) => {
+    try {
+
+
+
+        let driver = await VehicleWithUser.findById(req.user._id);
+        if (!driver) {
+            return res.status(404).json({ message: 'Driver not found' });
+        }
+
+
+        const ProfileImage = req.files['ProfileImage'] ? req.files['ProfileImage'][0] : null;
+
+
+        if (!ProfileImage) {
+            return res.status(400).json({ message: 'Profile image is required' });
+        }
+
+        if (ProfileImage) {
+            const ProfileImageUrl = await uploadToCloudinary(ProfileImage);
+            driver.user.profileImage = ProfileImageUrl;
+        };
+
+
+        await driver.save();
+
+        res.status(200).json({
+            message: 'Driver Profile Image updated successfully',
+            driver: driver.user
+        });
+
+    } catch (err) {
+        console.error('Error in updateDriver Profile Image:', err);
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+
+
+
 exports.deleteDriver = async (req, res) => {
     try {
-        const { driverId } = req.params;
 
 
-        const driver = await VehicleWithUser.findById(driverId);
+        const driver = await VehicleWithUser.findById(req.user._id);
 
 
         if (!driver) {
@@ -95,7 +136,7 @@ exports.deleteDriver = async (req, res) => {
         }
 
 
-        await VehicleWithUser.deleteOne({ _id: driverId });
+        await VehicleWithUser.deleteOne({ _id: req.user._id });
 
 
         res.status(200).json({
