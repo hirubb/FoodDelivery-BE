@@ -1,268 +1,313 @@
 // controllers/paymentController.js
-const crypto = require('crypto');
-const axios = require('axios');
 const Payment = require('../models/paymentModel');
-const messageQueue = require('../utils/messageQueue');
+const { generatePayHereHash, verifyPayHereNotification, getPaymentStatus } = require('../utils/paymentUtils');
+const { geocodeAddress } = require('../utils/geocodingUtils');
+const axios = require('axios');
+require('dotenv').config();
 
-// Initialize payment with PayHere
+// Initialize payment
 exports.initializePayment = async (req, res) => {
   try {
-    const { orderId, customerId, amount, items, customerDetails } = req.body;
-    
-    // Validate required parameters
-    if (!orderId) {
-      return res.status(400).json({ message: 'Order ID is required' });
-    }
-    
-    if (!customerId) {
-      return res.status(400).json({ message: 'Customer ID is required' });
-    }
-    
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ message: 'Valid amount is required' });
-    }
-    
-    if (!customerDetails || !customerDetails.first_name || !customerDetails.email) {
-      return res.status(400).json({ message: 'Customer details are incomplete' });
-    }
-    
-    // Check if payment already exists for this order
-    const existingPayment = await Payment.findOne({ 
-      orderId, 
-      status: { $in: ['PENDING', 'COMPLETED'] }
-    });
-    
-    if (existingPayment && existingPayment.status === 'COMPLETED') {
-      return res.status(400).json({ 
-        message: 'This order has already been paid for',
-        paymentId: existingPayment._id
-      });
-    }
-    
-    // Use existing payment if pending, create new one if none exists
-    const payment = existingPayment || new Payment({
+    const {
       orderId,
       customerId,
+      restaurantId,
       amount,
-      status: 'PENDING'
-    });
-    
-    if (!existingPayment) {
-      await payment.save();
+      items,
+      customerDetails,
+      deliveryDetails
+    } = req.body;
+
+    // Validate required fields
+    if (!orderId || !customerId || !restaurantId || !amount || !items) {
+      return res.status(400).json({ message: 'Missing required payment information' });
     }
-    
-    // Construct PayHere request data
+
+    // Check if payment already exists for this order
+    const existingPayment = await Payment.findOne({ orderId });
+    if (existingPayment) {
+      return res.status(400).json({ message: 'Payment for this order already exists' });
+    }
+
+    // Geocode customer address
+    let customerCoordinates = null;
+    if (customerDetails && customerDetails.address) {
+      customerCoordinates = await geocodeAddress(
+        customerDetails.address, 
+        customerDetails.city, 
+        customerDetails.country || 'Sri Lanka'
+      );
+    }
+
+    // Enhanced customer details with coordinates
+    const enhancedCustomerDetails = {
+      ...customerDetails,
+      coordinates: customerCoordinates || undefined
+    };
+
+    // Create new payment record
+    const payment = new Payment({
+      orderId,
+      customerId,
+      restaurantId,
+      amount,
+      items,
+      customerDetails: enhancedCustomerDetails,
+      deliveryDetails
+    });
+
+    await payment.save();
+
+    // Generate hash for PayHere
+    const merchantId = process.env.PAYHERE_MERCHANT_ID;
+    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
+    const currency = 'LKR'; // Default to LKR
+
+    const hash = generatePayHereHash(
+      merchantId,
+      orderId,
+      amount,
+      currency,
+      merchantSecret
+    );
+
+    // Construct payment data for frontend
     const paymentData = {
-      merchant_id: process.env.PAYHERE_MERCHANT_ID,
+      sandbox: process.env.NODE_ENV !== 'production', // Use sandbox for non-production
+      merchant_id: merchantId,
       return_url: process.env.PAYHERE_RETURN_URL,
       cancel_url: process.env.PAYHERE_CANCEL_URL,
       notify_url: process.env.PAYHERE_NOTIFY_URL,
-      order_id: payment._id.toString(),
-      items: items || 'Food Order', // Default value if items not provided
-      currency: 'LKR',
-      amount: amount.toString(),
-      first_name: customerDetails.first_name,
-      last_name: customerDetails.last_name || '',
-      email: customerDetails.email,
+      order_id: orderId,
+      items: items.map(item => item.name).join(', ').substring(0, 255), // Combine item names with limit
+      amount: amount.toFixed(2),
+      currency,
+      hash,
+      first_name: customerDetails.firstName || '',
+      last_name: customerDetails.lastName || '',
+      email: customerDetails.email || '',
       phone: customerDetails.phone || '',
-      address: customerDetails.address || 'N/A', // Optional
-      city: customerDetails.city || 'N/A',       // Optional
-      country: customerDetails.country || 'Sri Lanka' // Default
+      address: customerDetails.address || '',
+      city: customerDetails.city || '',
+      country: customerDetails.country || 'Sri Lanka',
+      delivery_address: deliveryDetails?.address || customerDetails.address || '',
+      delivery_city: deliveryDetails?.city || customerDetails.city || '',
+      delivery_country: deliveryDetails?.country || customerDetails.country || 'Sri Lanka',
+      custom_1: customerId, // Store customer ID
+      custom_2: restaurantId // Store restaurant ID
     };
-    
-    // Generate hash for PayHere (Production only - sandbox doesn't require this)
-    if (process.env.NODE_ENV === 'production') {
-      const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
-      const hashedData = generatePayHereHash(paymentData, merchantSecret);
-      paymentData.hash = hashedData;
-    }
-    
-    // Return payment initialization data to frontend
+
     res.status(200).json({
-      paymentId: payment._id,
-      paymentData
+      message: 'Payment initialized successfully',
+      paymentData,
+      customerCoordinates // Include coordinates in response
     });
+    
   } catch (error) {
-    console.error('Payment initialization error:', error);
-    res.status(500).json({ message: 'Payment initialization failed', error: error.message });
+    console.error('Error initializing payment:', error);
+    res.status(500).json({ message: 'Server error during payment initialization' });
   }
 };
 
-// PayHere callback notification handler
-exports.paymentCallback = async (req, res) => {
+// Handle payment notification from PayHere
+exports.handlePaymentNotification = async (req, res) => {
   try {
-    const paymentData = req.body;
-    
-    console.log('Received PayHere notification:', paymentData);
-    
-    // Always respond quickly to PayHere to acknowledge receipt
-    // This prevents PayHere from retrying the notification
-    res.status(200).send('Payment notification received');
-    
-    // Verify the authenticity of the notification (for production)
-    if (process.env.NODE_ENV === 'production') {
-      const isValid = verifyPayHereNotification(paymentData);
-      if (!isValid) {
-        console.error('Invalid payment notification, possible security issue:', paymentData);
-        return; // Already sent 200 response, but don't process this notification
-      }
+    const notificationData = req.body;
+    console.log('PayHere Notification:', notificationData);
+
+    const {
+      merchant_id,
+      order_id,
+      payment_id,
+      payhere_amount,
+      payhere_currency,
+      status_code,
+      md5sig,
+      method,
+      card_holder_name,
+      card_no,
+      card_expiry
+    } = notificationData;
+
+    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
+
+    // Verify the notification signature
+    const isValid = verifyPayHereNotification(notificationData, merchantSecret);
+
+    if (!isValid) {
+      console.error('Invalid PayHere notification signature');
+      return res.status(400).send('Invalid signature');
     }
-    
-    // Find and update the payment record
-    const payment = await Payment.findById(paymentData.order_id);
+
+    // Find the payment by order ID
+    const payment = await Payment.findOne({ orderId: order_id });
     
     if (!payment) {
-      console.error('Payment not found for order ID:', paymentData.order_id);
-      return;
+      console.error(`Payment not found for order ${order_id}`);
+      return res.status(404).send('Payment not found');
     }
+
+    // Update payment status and details
+    payment.status = getPaymentStatus(status_code);
+    payment.paymentId = payment_id;
+    payment.paymentMethod = method || '';
+    payment.paymentTimestamp = new Date();
     
-    // Update payment status based on PayHere status code
-    const paymentStatus = getPaymentStatus(paymentData.status_code);
-    
-    payment.status = paymentStatus;
-    payment.paymentReference = paymentData.payment_id;
-    payment.transactionDetails = paymentData;
-    
+    // Save card info if available (masked)
+    if (card_holder_name) {
+      payment.cardDetails = {
+        holderName: card_holder_name,
+        maskedNumber: card_no,
+        expiry: card_expiry
+      };
+    }
+
     await payment.save();
-    
-    // If payment is completed successfully, update order status via Order service
-    if (paymentStatus === 'COMPLETED') {
+
+    // Notify order service about payment status (if successful)
+    if (status_code === '2') {
       try {
-        const messageQueue = require('../utils/messageQueue');
-        
-        // Update order via direct API call
-        await updateOrderStatus(payment.orderId, 'PAID');
-        
-        // Also publish to message queue for asynchronous processing
-        await messageQueue.publishToQueue('payment_notifications', {
-          orderId: payment.orderId,
-          paymentId: payment._id,
-          status: paymentStatus,
-          amount: payment.amount
+        await axios.post('http://localhost:5000/api/orders/payment-update', {
+          orderId: order_id,
+          status: 'paid',
+          paymentId: payment_id
         });
-        
-        console.log(`Payment ${payment._id} completed successfully for order ${payment.orderId}`);
-      } catch (orderError) {
-        console.error('Failed to update order status:', orderError);
+        console.log(`Order service notified about successful payment for order ${order_id}`);
+      } catch (err) {
+        console.error('Error notifying order service:', err.message);
+        // Continue processing despite notification error
       }
     }
+
+    // Acknowledge the notification
+    res.status(200).send('Notification received');
+    
   } catch (error) {
-    console.error('Payment callback error:', error);
-    // We've already sent a 200 response to PayHere, so just log the error
+    console.error('Error processing payment notification:', error);
+    res.status(500).send('Server error');
   }
 };
 
-// Get payment status by ID
+// Get payment status with customer coordinates
 exports.getPaymentStatus = async (req, res) => {
   try {
-    const { paymentId } = req.params;
+    const { orderId } = req.params;
     
-    const payment = await Payment.findById(paymentId);
+    if (!orderId) {
+      return res.status(400).json({ message: 'Order ID is required' });
+    }
+
+    const payment = await Payment.findOne({ orderId });
     
     if (!payment) {
       return res.status(404).json({ message: 'Payment not found' });
     }
-    
+
     res.status(200).json({
-      paymentId: payment._id,
+      orderId: payment.orderId,
       status: payment.status,
       amount: payment.amount,
       currency: payment.currency,
-      createdAt: payment.createdAt
+      paymentId: payment.paymentId,
+      paymentMethod: payment.paymentMethod,
+      paymentTimestamp: payment.paymentTimestamp,
+      customerCoordinates: payment.customerDetails?.coordinates || null
     });
+    
   } catch (error) {
-    console.error('Get payment status error:', error);
-    res.status(500).json({ message: 'Failed to get payment status', error: error.message });
+    console.error('Error fetching payment status:', error);
+    res.status(500).json({ message: 'Server error while fetching payment status' });
   }
 };
 
 // Get all payments for a customer
 exports.getCustomerPayments = async (req, res) => {
   try {
-    const { customerId } = req.params;
+    const customerId = req.userId; // From auth middleware
     
     const payments = await Payment.find({ customerId })
       .sort({ createdAt: -1 });
     
-    res.status(200).json(payments);
-  } catch (error) {
-    console.error('Get customer payments error:', error);
-    res.status(500).json({ message: 'Failed to get customer payments', error: error.message });
-  }
-};
-
-// Get all payments for an order
-exports.getOrderPayments = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    
-    const payments = await Payment.find({ orderId })
-      .sort({ createdAt: -1 });
-    
-    res.status(200).json(payments);
-  } catch (error) {
-    console.error('Get order payments error:', error);
-    res.status(500).json({ message: 'Failed to get order payments', error: error.message });
-  }
-};
-
-// Helper function to generate PayHere MD5 hash
-function generatePayHereHash(data, merchantSecret) {
-  const merchantId = data.merchant_id;
-  const orderId = data.order_id;
-  const amount = data.amount;
-  const currency = data.currency;
-  
-  const hashString = merchantId + orderId + amount + currency + 
-    crypto.createHash('md5').update(merchantSecret).digest('hex').toUpperCase();
-  
-  return crypto.createHash('md5').update(hashString).digest('hex').toUpperCase();
-}
-
-// Helper function to verify PayHere notification
-function verifyPayHereNotification(data) {
-  const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
-  const merchantId = data.merchant_id;
-  const orderId = data.order_id;
-  const paymentId = data.payment_id;
-  const amount = data.payhere_amount;
-  const currency = data.payhere_currency;
-  const statusCode = data.status_code;
-  const md5sig = data.md5sig;
-  
-  const localHash = crypto.createHash('md5')
-    .update(merchantId + orderId + amount + currency + statusCode + 
-           crypto.createHash('md5').update(merchantSecret).digest('hex').toUpperCase())
-    .digest('hex').toUpperCase();
-  
-  return localHash === md5sig;
-}
-
-// Helper function to map PayHere status codes to internal status
-function getPaymentStatus(statusCode) {
-  const statusMap = {
-    '2': 'COMPLETED', // 2: Success
-    '0': 'PENDING',   // 0: Pending
-    '-1': 'CANCELLED', // -1: Canceled
-    '-2': 'FAILED',    // -2: Failed
-    '-3': 'CHARGEDBACK' // -3: Chargedback
-  };
-  
-  return statusMap[statusCode] || 'PENDING';
-}
-
-// Helper function to update order status via Order service
-async function updateOrderStatus(orderId, status) {
-  try {
-    // Call Order service API to update order status
-    // This is a simplified example - you'll need to implement actual service communication
-    const response = await axios.patch(`${process.env.ORDER_SERVICE_URL}/api/orders/${orderId}/status`, {
-      status
+    res.status(200).json({
+      message: 'Customer payments retrieved successfully',
+      payments
     });
     
-    return response.data;
   } catch (error) {
-    console.error('Failed to update order status:', error);
-    throw error;
+    console.error('Error fetching customer payments:', error);
+    res.status(500).json({ message: 'Server error while fetching customer payments' });
   }
-}
+};
+
+// Get all payments for a restaurant
+exports.getRestaurantPayments = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID is required' });
+    }
+
+    const payments = await Payment.find({ restaurantId })
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json({
+      message: 'Restaurant payments retrieved successfully',
+      payments
+    });
+    
+  } catch (error) {
+    console.error('Error fetching restaurant payments:', error);
+    res.status(500).json({ message: 'Server error while fetching restaurant payments' });
+  }
+};
+
+exports.regenerateCoordinates = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const customerId = req.userId; // From auth middleware
+    
+    // Find payment by order ID and customer ID
+    const payment = await Payment.findOne({ orderId, customerId });
+    
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found or unauthorized' });
+    }
+    
+    // Check if we have address information
+    if (!payment.customerDetails || !payment.customerDetails.address) {
+      return res.status(400).json({ message: 'No address information available for geocoding' });
+    }
+    
+    // Perform geocoding
+    const coordinates = await geocodeAddress(
+      payment.customerDetails.address,
+      payment.customerDetails.city,
+      payment.customerDetails.country || 'Sri Lanka',
+      payment.customerDetails.postalCode
+    );
+    
+    if (!coordinates) {
+      return res.status(400).json({ message: 'Could not geocode the address' });
+    }
+    
+    // Update customer coordinates
+    payment.customerDetails = {
+      ...payment.customerDetails,
+      coordinates
+    };
+    
+    await payment.save();
+    
+    res.status(200).json({
+      message: 'Customer coordinates regenerated successfully',
+      orderId,
+      coordinates
+    });
+    
+  } catch (error) {
+    console.error('Error regenerating coordinates:', error);
+    res.status(500).json({ message: 'Server error while regenerating coordinates' });
+  }
+};
+
