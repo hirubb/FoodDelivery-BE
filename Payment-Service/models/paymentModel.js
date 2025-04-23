@@ -1,43 +1,71 @@
-// models/paymentModel.js
+// models/payment.js
 const mongoose = require('mongoose');
 
-const PaymentSchema = new mongoose.Schema(
+const paymentSchema = new mongoose.Schema(
   {
-    orderId: { 
-      type: mongoose.Schema.Types.ObjectId, 
+    orderId: {
+      type: String,
       required: true,
-      ref: 'Order'
+      unique: true,
     },
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: 'Customer'
     },
-    amount: { 
-      type: Number, 
-      required: true 
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
     },
-    currency: { 
-      type: String, 
-      default: 'LKR' 
+    amount: {
+      type: Number,
+      required: true,
     },
-    status: { 
-      type: String, 
-      enum: ['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'],
-      default: 'PENDING' 
+    items: {
+      type: Array,
+      required: true,
     },
-    paymentMethod: { 
-      type: String, 
-      default: 'PayHere' 
+    currency: {
+      type: String,
+      default: 'LKR',
     },
-    paymentReference: { 
-      type: String 
+    status: {
+      type: String,
+      enum: ['pending', 'success', 'failed', 'canceled', 'chargedback'],
+      default: 'pending',
     },
-    transactionDetails: { 
-      type: Object 
-    }
+    paymentId: {
+      type: String,
+    },
+    paymentMethod: {
+      type: String,
+    },
+    paymentTimestamp: {
+      type: Date,
+    },
+    customerDetails: {
+      firstName: String,
+      lastName: String,
+      email: String,
+      phone: String,
+      address: String,
+      city: String,
+      country: String,
+      postalCode: String,
+      coordinates: {
+        latitude: Number,
+        longitude: Number
+      }
+    },
+    deliveryDetails: {
+      address: String,
+      city: String,
+      country: String,
+      postalCode: String,
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Payment', PaymentSchema);
+const Payment = mongoose.model('Payment', paymentSchema);
+
+module.exports = Payment;

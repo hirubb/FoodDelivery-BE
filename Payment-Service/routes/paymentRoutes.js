@@ -1,22 +1,29 @@
 // routes/paymentRoutes.js
 const express = require('express');
 const router = express.Router();
-const paymentController = require('../controllers/paymentController');
-const auth = require('../middleware/auth');
+const paymentController = require('../Controllers/paymentController');
+const authenticateCustomer = require('../middleware/authenticateCustomer');
+const authenticateRestaurant = require('../middleware/authenticateRestaurant');
 
-// Initialize a new payment
-router.post('/initialize', auth, paymentController.initializePayment);
+// Initialize payment (requires customer authentication)
+router.post('/initialize', authenticateCustomer, paymentController.initializePayment);
 
-// PayHere callback notification endpoint
-router.post('/callback', paymentController.paymentCallback);
+// Payment notification from PayHere (no authentication - public webhook)
+router.post('/callback', paymentController.handlePaymentNotification);
 
-// Get payment status by ID
-router.get('/status/:paymentId', auth, paymentController.getPaymentStatus);
+// Get payment status by order ID (can be accessed by customer or restaurant)
+router.get('/status/:orderId', paymentController.getPaymentStatus);
 
-// Get all payments for a customer
-router.get('/customer/:customerId', auth, paymentController.getCustomerPayments);
+// Get all payments for authenticated customer
+router.get('/customer', authenticateCustomer, paymentController.getCustomerPayments);
 
-// Get all payments for an order
-router.get('/order/:orderId', auth, paymentController.getOrderPayments);
+// Get all payments for restaurant (requires restaurant authentication)
+router.get('/restaurant/:restaurantId', authenticateRestaurant, paymentController.getRestaurantPayments);
+
+// Update customer coordinates for an order
+// router.put('/customer/order/:orderId/coordinates', authenticateCustomer, paymentController.updateCustomerCoordinates);
+
+// Add new route for regenerating coordinates
+router.post('/customer/order/:orderId/regenerate-coordinates', authenticateCustomer, paymentController.regenerateCoordinates);
 
 module.exports = router;
