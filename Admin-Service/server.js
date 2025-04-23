@@ -14,9 +14,8 @@ app.use(bodyParser.json()); // Parse JSON requests
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
 
 // Connect to MongoDB
-mongoose
-  .connect(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ Connected to MongoDB"))
+mongoose.connect(DB_URI)
+  .then(() => console.log("✅ Connected to MongoDB 2"))
   .catch((err) => console.error("❌ Could not connect to MongoDB:", err));
 
 // Sample route

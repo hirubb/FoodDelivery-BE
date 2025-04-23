@@ -35,7 +35,7 @@ app.post("/api/login", async (req, res) => {
     { name: "Admin", url: "http://localhost:4001/api/admin" },
     { name: "RestaurantOwner", url: "http://localhost:4000/api/restaurant-owners"},
     // { name: "DeliveryPerson", url: "http://localhost:6000/api/delivery-persons" },
-    { name: "Customer", url: "http://localhost:6000/api/customers" }
+    { name: "Customer", url: "http://localhost:9000/api/customers" }
   ];
 
   try {
