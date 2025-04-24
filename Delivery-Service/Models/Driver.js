@@ -44,6 +44,10 @@ const vehicleWithUserSchema = new mongoose.Schema({
         available: {
             type: Boolean,
             default: true
+        },
+        role: {
+            type: String,
+            default: "Delivery Person",
         }
     },
     vehicle: {

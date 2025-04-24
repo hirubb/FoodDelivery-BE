@@ -7,15 +7,22 @@ const { uploadToCloudinary } = require('../Utils/Cloudinary');
 
 exports.getAllDrivers = async (req, res) => {
     try {
+        // Fetch drivers and populate the 'user' and 'vehicle' fields
+        const drivers = await VehicleWithUser.find()
+            .populate('user')  // Populating user reference
+            .populate('vehicle');  // Populating vehicle reference
 
-        const drivers = await VehicleWithUser.find();
         if (!drivers.length) {
             return res.status(404).json({ message: 'No drivers found' });
         }
 
+        // Optionally, log the full driver data to ensure it's populated correctly
+        console.log("Drivers Data:", JSON.stringify(drivers, null, 2));
+
+        // Send back the populated drivers
         res.status(200).json({
             message: 'All drivers fetched successfully',
-            drivers: drivers.map(driver => driver.user)
+            drivers: drivers
         });
 
     } catch (err) {
