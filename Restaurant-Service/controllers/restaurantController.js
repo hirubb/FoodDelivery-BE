@@ -3,6 +3,14 @@ const Restaurant = require("../models/Restaurant");
 const axios = require('axios');
 const getCoordinates = require("../utils/geocode");
 
+const nodemailer = require("nodemailer");
+const twilio = require("twilio");
+
+const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL;
+
+// Twilio setup
+const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+
 const registerRestaurant = async (req, res) => {
   try {
     const {name, email, phone, street,state,postal_code, license,opHrs,opDays,city, country, cuisine_type } = req.body;
@@ -62,6 +70,20 @@ const registerRestaurant = async (req, res) => {
 
     // Save the new restaurant
     await newRestaurant.save();
+
+    const adminServiceURL = "http://localhost:4001/api/admin/notifyRegistration";
+    try {
+      const response = await axios.post(adminServiceURL, {
+        restaurant: newRestaurant, 
+      });
+    
+      console.log("Admin notified successfully:", response.data);
+    } catch (notifyError) {
+      console.error("Failed to notify admin service:", notifyError.message);
+    }
+
+
+
     return res.status(201).json({ message: "Restaurant registered successfully", restaurant: newRestaurant });
 
   } catch (error) {
@@ -316,6 +338,28 @@ const edtRestaurant = async (req, res) => {
   }
 };
 
+const getRestaurantOrders = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const restaurant = await Restaurant.findById(restaurantId);
+    
+
+    if (!restaurant) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    
+    // return res.status(200).json({ message: "Restaurant found" });
+    const orderRes = await axios.get(`${ORDER_SERVICE_URL}/${restaurantId}`);
+
+    return res.status(200).json(orderRes.data);
+  } catch (error) {
+    console.error("Error fetching restaurant orders:", error.message);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
 
 
 
@@ -328,5 +372,6 @@ module.exports = {
   getTopRatedRestaurants,
   getRestaurantById,
   updateStatus,
-  edtRestaurant
+  edtRestaurant,
+  getRestaurantOrders
 };

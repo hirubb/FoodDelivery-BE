@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { registerRestaurant,myRestaurants,getAllRestaurants,rateRestaurant,getTopRatedRestaurants,getRestaurantById,updateStatus,edtRestaurant } = require("../controllers/restaurantController");
+const { registerRestaurant,myRestaurants,getAllRestaurants,rateRestaurant,getTopRatedRestaurants,getRestaurantById,updateStatus,edtRestaurant,getRestaurantOrders } = require("../controllers/restaurantController");
 const authenticate = require("../middleware/authMiddleware"); 
 const upload = require("../middleware/upload");
 const menuController = require("../controllers/menuController");
@@ -18,6 +18,7 @@ router.put("/edit/:restaurantId", authenticate,
     upload.fields([{ name: 'logo' },
          { name: 'banner_image' }]),
           edtRestaurant);
+router.get("/get-orders/:restaurantId",getRestaurantOrders)
 
 
 // order management service will call this endpoint to get restaurant details(Dulmi)
