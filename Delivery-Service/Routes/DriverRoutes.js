@@ -4,7 +4,8 @@ const {
     getAllDrivers,
     getDriverById,
     updateDriver,
-    deleteDriver
+    deleteDriver,
+    getAllUsers
 } = require('../Controllers/driverController');
 
 const authenticate = require('../middleware/auth');
@@ -21,5 +22,7 @@ router.put('/:driverId', authenticate, updateDriver);
 
 
 router.delete('/:driverId', authenticate, deleteDriver);
+
+router.get("/",getAllUsers);
 
 module.exports = router;

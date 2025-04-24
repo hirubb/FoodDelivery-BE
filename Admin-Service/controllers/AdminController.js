@@ -208,7 +208,7 @@ const approveRestaurant = async (req, res) => {
 };
 
 const getCustomers = async (req, res) => {
-  const customerServiceURL = "http://localhost:6000/api/customers/";
+  const customerServiceURL = "http://localhost:9000/api/customers/";
 
   try {
     const response = await axios.get(customerServiceURL);
@@ -225,6 +225,26 @@ const getCustomers = async (req, res) => {
   }
 };
 
+const getDrivers = async(req, res) => {
+
+  const driverServiceURL = "http://localhost:3001/api/driver/";
+
+  try {
+    const response = await axios.get(driverServiceURL);
+    const drivers = response.data;
+
+    if (!drivers || drivers.length === 0) {
+      return res.status(404).json({ message: "No drivers found." });
+    }
+
+    res.status(200).json({ drivers });
+  } catch (error) {
+    console.error("Error fetching drivers:", error.message);
+    res.status(500).json({ message: "Failed to fetch drivers.", error: error.message });
+  }
+
+}
+
 
 
   module.exports = {
@@ -235,6 +255,7 @@ const getCustomers = async (req, res) => {
     getAllRestaurantOwners,
     getAllRestauants,
     approveRestaurant,
-    getCustomers
+    getCustomers,
+    getDrivers
   
   };
