@@ -5,6 +5,7 @@ const getCoordinates = require("../utils/geocode");
 
 const nodemailer = require("nodemailer");
 const twilio = require("twilio");
+const MenuItems = require("../models/MenuItems");
 
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL;
 
@@ -360,6 +361,48 @@ const getRestaurantOrders = async (req, res) => {
   }
 };
 
+const getOrderDetails = async (req, res) => {
+  try {
+    const { orders } = req.body;
+
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return res.status(400).json({ message: "No orders received" });
+    }
+
+    const enrichedOrders = [];
+
+    for (const order of orders) {
+      const populatedItems = [];
+
+      for (const item of order.items) {
+        const menuItem = await MenuItems.findById(item.menuItemId);
+
+        if (menuItem) {
+          populatedItems.push({
+            menuItem,
+            quantity: item.quantity
+          });
+        } else {
+          console.warn(`Menu item not found for ID: ${item.menuItemId}`);
+        }
+      }
+
+      enrichedOrders.push({
+        orderId: order._id,
+        restaurantId: order.restaurantId,
+        items: populatedItems
+      });
+    }
+
+    return res.status(200).json({ orders: enrichedOrders });
+  } catch (error) {
+    console.error("Error fetching restaurant orders:", error.message);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
+
 
 
 
@@ -373,5 +416,6 @@ module.exports = {
   getRestaurantById,
   updateStatus,
   edtRestaurant,
-  getRestaurantOrders
+  getRestaurantOrders,
+  getOrderDetails
 };

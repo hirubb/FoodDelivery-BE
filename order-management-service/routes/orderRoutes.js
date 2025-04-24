@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { placeOrder ,updateOrderStatus,getOrderStatus,getOrdersByRestaurant} = require("../controllers/orderController.js");
+const { placeOrder ,updateOrderStatus,getOrderStatus,getOrdersByRestaurant,sendOrderToRestaurant} = require("../controllers/orderController.js");
 
 const auth = require('../middleware/authMiddleware.js');
 
@@ -13,6 +13,8 @@ router.patch("/:id/status", updateOrderStatus);
 // Route to get order status
 router.get("/:id/status", getOrderStatus);
 
-router.get("/:restaurantId",getOrdersByRestaurant);
+// router.get("/:restaurantId",getOrdersByRestaurant);
+
+router.get("/:restaurantId",sendOrderToRestaurant)
 
 module.exports = router;
