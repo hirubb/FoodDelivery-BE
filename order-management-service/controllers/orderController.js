@@ -165,6 +165,42 @@ exports.getOrderStatus = async (req, res) => {
   }
 };
 
+//get all orders by restaurant id
+exports.getOrdersByRestaurant = async (req, res) => {
+
+  try {
+    const { restaurantId } = req.params;
+    const orders = await Order.find({ restaurantId: restaurantId });
+    if (!orders) return res.status(404).json({ error: "Order not found for the restaurant" });
+    res.json({ status: orders });
+
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching Orders" });
+  }
+
+}
+
+exports.sendOrderToRestaurant = async (req, res) => {
+
+  try {
+    
+    const { restaurantId } = req.params;
+    
+    const orders = await Order.find({ restaurantId: restaurantId });
+    
+    if (!orders) return res.status(404).json({ error: "Order not found for the restaurant" });
+
+
+    const response = await axios.post(`${RESTAURANT_BASE_URL}/sendOrderDetails`, {orders});
+    res.json({ status: response.data });
+
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching Orders" });
+  }
+
+
+}
+
 // Get customer orders
 exports.getCustomerOrders = async (req, res) => {
   const { customerId } = req.params;

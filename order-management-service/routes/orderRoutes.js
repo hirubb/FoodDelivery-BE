@@ -7,7 +7,7 @@ const {
   updateOrderStatus, 
   getOrderStatus, 
   getCustomerOrders 
-} = require("../controllers/orderController.js");
+,getOrdersByRestaurant,sendOrderToRestaurant} = require("../controllers/orderController.js");
 
 // No middleware needed - orders can be placed without authentication
 router.post("/", authenticate, placeOrder);
@@ -20,5 +20,9 @@ router.get("/:id/status", getOrderStatus);
 
 // Route to get all orders for a customer
 router.get("/customer/:customerId", getCustomerOrders);
+
+// router.get("/:restaurantId",getOrdersByRestaurant);
+
+router.get("/:restaurantId",sendOrderToRestaurant)
 
 module.exports = router;
