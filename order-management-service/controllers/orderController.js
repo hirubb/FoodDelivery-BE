@@ -4,43 +4,23 @@ const Order = require("../models/Order");
 const { v4: uuidv4 } = require("uuid");
 
 const RESTAURANT_BASE_URL = process.env.RESTAURANT_BASE_URL;
-const CUSTOMER_SERVICE_URL = process.env.CUSTOMER_SERVICE_URL || 'http://localhost:7000/api/customers';
 
 exports.placeOrder = async (req, res) => {
-  // Get customerId from the authenticated token instead of request body
+  // Get customer information and total amount directly from request body
   const customerId = req.userId;
-  const { restaurantId, items } = req.body;
+  const {restaurantId, items, totalAmount } = req.body;
 
   try {
     console.log("➡️ Incoming Order Request:", req.body);
-    console.log("🔐 Authenticated Customer:", customerId);
+    console.log("✅ Using authenticated customerId:", customerId);
 
-    // ✅ 1. Validate customer exists (even though we've authenticated)
-    if (!mongoose.Types.ObjectId.isValid(customerId)) {
-      return res.status(400).json({
+    if (!customerId) {
+      return res.status(401).json({
         success: false,
-        error: "Invalid customer ID format"
+        error: "Authentication required to place an order"
       });
     }
 
-    try {
-      const customerRes = await axios.get(`${CUSTOMER_SERVICE_URL}/${customerId}`);
-      if (!customerRes.data || !customerRes.data.customer) {
-        return res.status(404).json({
-          success: false,
-          error: "Customer not found. Only registered customers can place orders."
-        });
-      }
-      
-      console.log("✅ Customer validated:", customerRes.data.customer.first_name);
-      
-    } catch (error) {
-      console.error("Customer validation error:", error.message);
-      return res.status(404).json({
-        success: false,
-        error: "Customer validation failed. Please ensure you are registered."
-      });
-    }
 
     // ✅ 2. Check if restaurant exists
     try {
@@ -63,39 +43,37 @@ exports.placeOrder = async (req, res) => {
     }
 
     // ✅ 3. Fetch menu
-let menu;
-try {
-  // Updated menu endpoint URL to match Restaurant Service route
-  const menuRes = await axios.get(`${RESTAURANT_BASE_URL}/${restaurantId}/menu`);
-  menu = menuRes.data;
-  
-  // Improved menu validation
-  if (!menuRes.data || !Array.isArray(menuRes.data)) {
-    console.log("Invalid menu response:", menuRes.data);
-    return res.status(404).json({
-      success: false,
-      error: "Restaurant menu not found or invalid format"
-    });
-  }
+    let menu;
+    try {
+      const menuRes = await axios.get(`${RESTAURANT_BASE_URL}/${restaurantId}/menu`);
+      menu = menuRes.data;
+      
+      if (!menuRes.data || !Array.isArray(menuRes.data)) {
+        console.log("Invalid menu response:", menuRes.data);
+        return res.status(404).json({
+          success: false,
+          error: "Restaurant menu not found or invalid format"
+        });
+      }
 
-  if (menu.length === 0) {
-    return res.status(404).json({
-      success: false,
-      error: "Restaurant menu is empty"
-    });
-  }
-  
-  console.log("✅ Menu fetched successfully:", menu.length, "items");
-  
-} catch (error) {
-  console.error("Menu fetch error:", error.message);
-  console.error("Full error:", error.response?.data || error);
-  return res.status(500).json({
-    success: false,
-    error: "Failed to fetch restaurant menu",
-    details: error.response?.data || error.message
-  });
-}
+      if (menu.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Restaurant menu is empty"
+        });
+      }
+      
+      console.log("✅ Menu fetched successfully:", menu.length, "items");
+      
+    } catch (error) {
+      console.error("Menu fetch error:", error.message);
+      console.error("Full error:", error.response?.data || error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to fetch restaurant menu",
+        details: error.response?.data || error.message
+      });
+    }
 
     // ✅ 4. Validate items
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -105,8 +83,11 @@ try {
       });
     }
     
+    // Find all menu items to validate against
+    const allMenuItems = menu.flatMap(category => category.menu_items || []);
+    
     const invalidItems = items.filter(orderItem =>
-      !menu.some(menuItem => menuItem._id === orderItem.menuItemId)
+      !allMenuItems.some(menuItem => menuItem._id === orderItem.menuItemId)
     );
 
     if (invalidItems.length > 0) {
@@ -119,12 +100,21 @@ try {
     
     console.log("✅ All menu items validated");
 
-    // ✅ 5. Save the order with generated orderId
+    // ✅ 5. Validate total amount
+    if (typeof totalAmount !== 'number' || totalAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Valid total amount is required"
+      });
+    }
+
+    // ✅ 6. Save the order with generated orderId and total amount
     const newOrder = new Order({
       orderId: uuidv4(),
       customerId,
       restaurantId,
       items,
+      totalAmount,
       status: "Pending",
       paymentStatus: "Unpaid"
     });
@@ -147,6 +137,7 @@ try {
     });
   }
 };
+
 exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -171,5 +162,32 @@ exports.getOrderStatus = async (req, res) => {
     res.json({ status: order.status });
   } catch (err) {
     res.status(500).json({ error: "Error fetching status" });
+  }
+};
+
+// Get customer orders
+exports.getCustomerOrders = async (req, res) => {
+  const { customerId } = req.params;
+  
+  try {
+    if (!mongoose.Types.ObjectId.isValid(customerId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid customer ID format"
+      });
+    }
+    
+    const orders = await Order.find({ customerId }).sort({ createdAt: -1 });
+    
+    res.status(200).json({
+      success: true,
+      orders
+    });
+  } catch (error) {
+    console.error("Error fetching customer orders:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch orders"
+    });
   }
 };
