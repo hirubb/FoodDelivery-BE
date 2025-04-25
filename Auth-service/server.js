@@ -39,26 +39,28 @@ app.post("/api/login", async (req, res) => {
   ];
 
   try {
-    // Fetch users from all services
-    const results = await Promise.all(
+    // Use Promise.allSettled to handle individual service errors
+    const results = await Promise.allSettled(
       services.map(async (service) => {
-        const res = await axios.get(service.url);
-        console.log(`🔍 Response from ${service.name}:`, res.data);
+        const response = await axios.get(service.url);
         return {
-          users: res.data.users,
+          users: response.data.users,
           role: service.name,
         };
       })
     );
 
-    // Search for the user in all roles
-    for (let result of results) {
-      const user = result.users.find((u) => u.email === email);
+    // Filter out failed service results
+    const validResults = results
+      .filter(result => result.status === "fulfilled")
+      .map(result => result.value);
 
+    // Search for the user in all available results
+    for (let result of validResults) {
+      const user = result.users.find((u) => u.email === email);
       if (user) {
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
-          // Inside isMatch check
           const token = jwt.sign(
             {
               id: user._id,
