@@ -2,6 +2,7 @@ require('dotenv').config();
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 const bcrypt = require("bcryptjs"); // Add bcrypt to verify the password
+const Notification = require("../models/Notification")
 
 
 
@@ -245,6 +246,82 @@ const getDrivers = async(req, res) => {
 
 }
 
+const notifyRegistration = async (req, res) => {
+  try {
+    const { restaurant } = req.body;
+    if (!restaurant) {
+      return res.status(400).json({ message: "Restaurant data is required." });
+    }
+
+    const admins = await Admin.find();
+    const adminEmails = admins.map((admin) => admin.email);
+    const adminPhones = admins.map((admin) => admin.phone);
+
+    // 1️⃣ Send Email to Admins
+    // const transporter = nodemailer.createTransport({
+    //   service: "Gmail",
+    //   auth: {
+    //     user: process.env.EMAIL_USER,
+    //     pass: process.env.EMAIL_PASS,
+    //   },
+    // });
+
+    // await transporter.sendMail({
+    //   from: `"Restaurant System" <${process.env.EMAIL_USER}>`,
+    //   to: adminEmails,
+    //   subject: "New Restaurant Registration",
+    //   html: `
+    //     <h2>🍽️ New Restaurant Registered</h2>
+    //     <p><strong>Name:</strong> ${restaurant.name}</p>
+    //     <p><strong>Email:</strong> ${restaurant.email}</p>
+    //     <p><strong>Phone:</strong> ${restaurant.phone}</p>
+    //     <p><strong>Address:</strong> ${restaurant.street}, ${restaurant.city}, ${restaurant.state}, ${restaurant.country}</p>
+    //     <p><strong>Cuisine:</strong> ${restaurant.cuisine_type}</p>
+    //   `,
+    // });
+
+    // 2️⃣ Send SMS to Admins
+    // const client = twilio(
+    //   process.env.TWILIO_SID,
+    //   process.env.TWILIO_AUTH_TOKEN
+    // );
+
+    // for (const phone of adminPhones) {
+    //   await client.messages.create({
+    //     body: `📢 New Restaurant Registered: ${restaurant.name} (${restaurant.city})`,
+    //     from: process.env.TWILIO_PHONE_NUMBER,
+    //     to: phone,
+    //   });
+    // }
+
+    // 3️⃣ Create System Notification
+    await Notification.create({
+      type: "restaurant_registration",
+      message: `New restaurant '${restaurant.name}' registered.`,
+      recipients: admins.map((admin) => admin._id),
+    });
+
+    return res.status(200).json({ message: "Admins notified successfully." });
+  } catch (err) {
+    console.error("Notification Error:", err);
+    return res.status(500).json({ message: "Failed to notify admins." });
+  }
+};
+
+const getAllNotifications = async (req, res) => {
+
+  const notifications = await Notification.find();
+  if (!notifications) {
+    
+    return res.status(400).json({ message: "No Any Notifications." });
+    
+  }
+  return res.status(200).json({
+    notifications
+  })
+
+}
+
 
 
   module.exports = {
@@ -256,6 +333,8 @@ const getDrivers = async(req, res) => {
     getAllRestauants,
     approveRestaurant,
     getCustomers,
-    getDrivers
+    getDrivers,
+    notifyRegistration,
+    getAllNotifications
   
   };
