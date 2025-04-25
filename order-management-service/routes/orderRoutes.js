@@ -6,8 +6,10 @@ const {
   placeOrder, 
   updateOrderStatus, 
   getOrderStatus, 
-  getCustomerOrders 
-,getOrdersByRestaurant,sendOrderToRestaurant} = require("../controllers/orderController.js");
+  getCustomerOrders,
+  getOrderById,
+  updatePaymentStatus
+} = require("../controllers/orderController.js");
 
 // No middleware needed - orders can be placed without authentication
 router.post("/", authenticate, placeOrder);
@@ -21,8 +23,10 @@ router.get("/:id/status", getOrderStatus);
 // Route to get all orders for a customer
 router.get("/customer/:customerId", getCustomerOrders);
 
-// router.get("/:restaurantId",getOrdersByRestaurant);
+// Add new route to get complete order data by ID
+router.get("/:id", authenticate, getOrderById);
 
-router.get("/:restaurantId",sendOrderToRestaurant)
+// Add new route for payment status updates (no auth required for PayHere callbacks)
+router.post("/payment-update", updatePaymentStatus);
 
 module.exports = router;

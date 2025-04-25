@@ -227,3 +227,142 @@ exports.getCustomerOrders = async (req, res) => {
     });
   }
 };
+
+// Add this function to your orderController.js file
+
+exports.getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if the ID is a valid MongoDB ObjectId or UUID
+    let order;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      // If it's a MongoDB ObjectId
+      order = await Order.findById(id);
+    } else {
+      // If it's likely a UUID (orderId field)
+      order = await Order.findOne({ orderId: id });
+    }
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found"
+      });
+    }
+    
+    // Add item details to the order
+    // In a real app, you might need to fetch this from restaurants service
+    try {
+      const menuRes = await axios.get(`${RESTAURANT_BASE_URL}/${order.restaurantId}/menu`);
+      const menu = menuRes.data;
+      const allMenuItems = menu.flatMap(category => category.menu_items || []);
+      
+      // Enhance order items with name and price from menu
+      const enhancedItems = order.items.map(item => {
+        const menuItem = allMenuItems.find(mi => mi._id === item.menuItemId);
+        return {
+          ...item.toObject(),
+          name: menuItem ? menuItem.name : "Unknown Item",
+          price: menuItem ? menuItem.price : 0
+        };
+      });
+      
+      // Create a new object that includes the complete order plus enhanced items
+      const completeOrder = {
+        ...order.toObject(),
+        items: enhancedItems
+      };
+      
+      return res.status(200).json({
+        success: true,
+        order: completeOrder
+      });
+      
+    } catch (error) {
+      // If we can't fetch menu items, return order without enhanced data
+      console.error("Error fetching menu items:", error.message);
+      return res.status(200).json({
+        success: true,
+        order,
+        warning: "Could not retrieve full menu item details"
+      });
+    }
+    
+  } catch (error) {
+    console.error("Error fetching order:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch order details"
+    });
+  }
+};
+
+// In orderController.js - Enhanced updatePaymentStatus function
+
+exports.updatePaymentStatus = async (req, res) => {
+  try {
+    const { orderId, paymentStatus, paymentId } = req.body;
+    
+    console.log(`Updating order ${orderId} with payment status: ${paymentStatus}`);
+    
+    if (!orderId || !paymentStatus) {
+      return res.status(400).json({
+        success: false,
+        error: "Order ID and payment status are required"
+      });
+    }
+    
+    // Find the order using orderId field (UUID)
+    const order = await Order.findOne({ orderId: orderId });
+    
+    if (!order) {
+      console.error(`Order not found with orderId: ${orderId}`);
+      return res.status(404).json({
+        success: false,
+        error: "Order not found"
+      });
+    }
+    
+    // Update the order payment status
+    const previousPaymentStatus = order.paymentStatus;
+    order.paymentStatus = paymentStatus;
+    
+    // If payment is successful, update the order status to Confirmed
+    if (paymentStatus === 'Paid') {
+      order.status = "Confirmed";
+      // Add timestamp for when payment was confirmed
+      order.paymentConfirmedAt = new Date();
+      console.log(`Order ${orderId} status updated to Confirmed`);
+    }
+    
+    // Add payment ID reference if provided
+    if (paymentId) {
+      order.paymentId = paymentId;
+    }
+    
+    await order.save();
+    
+    console.log(`Order ${orderId} payment status updated from ${previousPaymentStatus} to ${paymentStatus}`);
+    
+    // Return detailed response for debugging
+    res.status(200).json({
+      success: true,
+      message: "Order payment status updated successfully",
+      order: {
+        orderId: order.orderId,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        previousPaymentStatus
+      }
+    });
+    
+  } catch (error) {
+    console.error("Error updating order payment status:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update order payment status",
+      details: error.message
+    });
+  }
+};

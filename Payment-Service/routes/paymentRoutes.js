@@ -1,4 +1,4 @@
-// routes/paymentRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../Controllers/paymentController');
@@ -14,6 +14,9 @@ router.post('/callback', paymentController.handlePaymentNotification);
 // Get payment status by order ID (can be accessed by customer or restaurant)
 router.get('/status/:orderId', paymentController.getPaymentStatus);
 
+// Manually update payment status (requires authentication)
+router.put('/status/:orderId', authenticateCustomer, paymentController.updatePaymentStatus);
+
 // Get all payments for authenticated customer
 router.get('/customer', authenticateCustomer, paymentController.getCustomerPayments);
 
@@ -21,9 +24,9 @@ router.get('/customer', authenticateCustomer, paymentController.getCustomerPayme
 router.get('/restaurant/:restaurantId', authenticateRestaurant, paymentController.getRestaurantPayments);
 
 // Update customer coordinates for an order
-// router.put('/customer/order/:orderId/coordinates', authenticateCustomer, paymentController.updateCustomerCoordinates);
-
-// Add new route for regenerating coordinates
 router.post('/customer/order/:orderId/regenerate-coordinates', authenticateCustomer, paymentController.regenerateCoordinates);
+
+// Manual sync endpoint to force update order status from payment
+router.post('/sync/:orderId', authenticateCustomer, paymentController.syncPaymentWithOrder);
 
 module.exports = router;
