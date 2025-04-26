@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { registerAdmin,loginAdmin ,profile ,getAllUsers,getAllRestaurantOwners,getAllRestauants,approveRestaurant,getCustomers} = require("../controllers/AdminController");
+const { registerAdmin,loginAdmin ,profile ,getAllUsers,getAllRestaurantOwners,getAllRestauants,approveRestaurant,getCustomers,getDrivers,notifyRegistration,getAllNotifications} = require("../controllers/AdminController");
 
 const authenticate = require("../middleware/authMiddleware"); 
 const upload = require("../middleware/upload");
@@ -13,5 +13,8 @@ router.get("/restaurant-owners", getAllRestaurantOwners);
 router.get("/restaurants", getAllRestauants);
 router.get("/restaurants/:restaurantId/approve",approveRestaurant);
 router.get("/customers",getCustomers);
+router.get("/drivers",getDrivers);
+router.post("/notifyRegistration",notifyRegistration);
+router.get("/notifications",getAllNotifications);
 
 module.exports = router;

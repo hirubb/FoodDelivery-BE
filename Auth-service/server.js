@@ -36,8 +36,8 @@ app.post("/api/login", async (req, res) => {
   ];
 
   try {
-    // Fetch users from all services
-    const results = await Promise.all(
+    // Use Promise.allSettled to handle individual service errors
+    const results = await Promise.allSettled(
       services.map(async (service) => {
         try {
           const response = await axios.get(service.url);

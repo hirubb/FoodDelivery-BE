@@ -3,6 +3,15 @@ const Restaurant = require("../models/Restaurant");
 const axios = require('axios');
 const getCoordinates = require("../utils/geocode");
 
+const nodemailer = require("nodemailer");
+const twilio = require("twilio");
+const MenuItems = require("../models/MenuItems");
+
+const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL;
+
+// Twilio setup
+const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+
 const registerRestaurant = async (req, res) => {
   try {
     const {name, email, phone, street,state,postal_code, license,opHrs,opDays,city, country, cuisine_type } = req.body;
@@ -62,6 +71,20 @@ const registerRestaurant = async (req, res) => {
 
     // Save the new restaurant
     await newRestaurant.save();
+
+    const adminServiceURL = "http://localhost:4001/api/admin/notifyRegistration";
+    try {
+      const response = await axios.post(adminServiceURL, {
+        restaurant: newRestaurant, 
+      });
+    
+      console.log("Admin notified successfully:", response.data);
+    } catch (notifyError) {
+      console.error("Failed to notify admin service:", notifyError.message);
+    }
+
+
+
     return res.status(201).json({ message: "Restaurant registered successfully", restaurant: newRestaurant });
 
   } catch (error) {
@@ -242,6 +265,145 @@ const updateStatus = async (req, res) => {
   }
 };
 
+const edtRestaurant = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const {
+      name,
+      email,
+      phone,
+      street,
+      city,
+      state,
+      postal_code,
+      country,
+      license,
+      opHrs,
+      opDays,
+      cuisine_type,
+      
+    } = req.body;
+
+    // Check if restaurant exists
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found.' });
+    }
+
+    // Ensure that only the owner can update the restaurant
+    const userId = req.userId;
+    if (restaurant.owner_id.toString() !== userId) {
+      return res.status(403).json({ message: 'Unauthorized to edit this restaurant.' });
+    }
+
+    // Update fields
+    if (name) restaurant.name = name;
+    if (email) restaurant.email = email;
+    if (phone) restaurant.phone = phone;
+    if (street) restaurant.street = street;
+    if (city) restaurant.city = city;
+    if (state) restaurant.state = state;
+    if (postal_code) restaurant.postal_code = postal_code;
+    if (license) restaurant.license = license;
+    if (opHrs) restaurant.opHrs = opHrs;
+    if (opDays) restaurant.opDays = opDays;
+    if (country) restaurant.country = country;
+    if (cuisine_type) restaurant.cuisine_type = cuisine_type;
+
+    // Recalculate full address and coordinates if address fields changed
+    if (street || city || state || country) {
+      const fullAddress = `${restaurant.street}, ${restaurant.city}, ${restaurant.state}, ${restaurant.country}`;
+      const { latitude, longitude } = await getCoordinates(fullAddress);
+      restaurant.latitude = latitude;
+      restaurant.longitude = longitude;
+    }
+
+    // Handle file updates
+    if (req.files && req.files.logo) {
+      restaurant.logo = req.files.logo[0].path;
+    }
+    if (req.files && req.files.banner_image) {
+      restaurant.banner_image = req.files.banner_image[0].path;
+    }
+
+    await restaurant.save();
+
+    return res.status(200).json({
+      message: 'Restaurant updated successfully.',
+      data: restaurant,
+    });
+
+  } catch (error) {
+    console.error('Error updating restaurant:', error);
+    res.status(500).json({ message: 'Internal server error while updating restaurant.' });
+  }
+};
+
+const getRestaurantOrders = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const restaurant = await Restaurant.findById(restaurantId);
+    
+
+    if (!restaurant) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    
+    // return res.status(200).json({ message: "Restaurant found" });
+    const orderRes = await axios.get(`${ORDER_SERVICE_URL}/${restaurantId}`);
+
+    return res.status(200).json(orderRes.data);
+  } catch (error) {
+    console.error("Error fetching restaurant orders:", error.message);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+const getOrderDetails = async (req, res) => {
+  try {
+    const { orders } = req.body;
+
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return res.status(400).json({ message: "No orders received" });
+    }
+
+    const enrichedOrders = [];
+
+    for (const order of orders) {
+      const populatedItems = [];
+
+      for (const item of order.items) {
+        const menuItem = await MenuItems.findById(item.menuItemId);
+
+        if (menuItem) {
+          populatedItems.push({
+            menuItem,
+            quantity: item.quantity
+          });
+        } else {
+          console.warn(`Menu item not found for ID: ${item.menuItemId}`);
+        }
+      }
+
+      enrichedOrders.push({
+        orderId: order._id,
+        restaurantId: order.restaurantId,
+        items: populatedItems
+      });
+    }
+
+    return res.status(200).json({ orders: enrichedOrders });
+  } catch (error) {
+    console.error("Error fetching restaurant orders:", error.message);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
+
+
 
 
 // Exporting all functions at the end
@@ -252,5 +414,8 @@ module.exports = {
   rateRestaurant,
   getTopRatedRestaurants,
   getRestaurantById,
-  updateStatus
+  updateStatus,
+  edtRestaurant,
+  getRestaurantOrders,
+  getOrderDetails
 };

@@ -13,6 +13,10 @@ const orderSchema = new mongoose.Schema({
       quantity: Number,
     },
   ],
+  totalAmount: {
+    type: Number,
+    required: true
+  },
   status: {
     type: String,
     enum: ["Pending", "Confirmed", "Preparing", "Out for Delivery", "Delivered"],
@@ -26,10 +30,12 @@ const orderSchema = new mongoose.Schema({
   orderId: {
     type: String,
     unique: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
-  
 });
-
 
 // Add validation middleware
 orderSchema.pre('save', async function(next) {
@@ -38,4 +44,5 @@ orderSchema.pre('save', async function(next) {
   }
   next();
 });
+
 module.exports = mongoose.model("Order", orderSchema);

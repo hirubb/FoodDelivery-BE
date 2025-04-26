@@ -1,16 +1,32 @@
 const express = require("express");
 const router = express.Router();
-const { placeOrder ,updateOrderStatus,getOrderStatus} = require("../controllers/orderController.js");
+const authenticate = require("../middleware/customerAuth.js");
 
-const auth = require('../middleware/authMiddleware.js');
+const { 
+  placeOrder, 
+  updateOrderStatus, 
+  getOrderStatus, 
+  getCustomerOrders,
+  getOrderById,
+  updatePaymentStatus
+} = require("../controllers/orderController.js");
 
-// Protected route - only authenticated users can place orders
-router.post("/", auth, placeOrder);
+// No middleware needed - orders can be placed without authentication
+router.post("/", authenticate, placeOrder);
 
 // Route to update order status
 router.patch("/:id/status", updateOrderStatus);
 
 // Route to get order status
 router.get("/:id/status", getOrderStatus);
+
+// Route to get all orders for a customer
+router.get("/customer/:customerId", getCustomerOrders);
+
+// Add new route to get complete order data by ID
+router.get("/:id", authenticate, getOrderById);
+
+// Add new route for payment status updates (no auth required for PayHere callbacks)
+router.post("/payment-update", updatePaymentStatus);
 
 module.exports = router;
