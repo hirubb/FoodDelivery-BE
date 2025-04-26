@@ -8,7 +8,9 @@ const {
   getOrderStatus, 
   getCustomerOrders,
   getOrderById,
-  updatePaymentStatus
+  updatePaymentStatus,
+  updateOrder,   // Add the new controller functions
+  deleteOrder
 } = require("../controllers/orderController.js");
 
 // No middleware needed - orders can be placed without authentication
@@ -28,5 +30,12 @@ router.get("/:id", authenticate, getOrderById);
 
 // Add new route for payment status updates (no auth required for PayHere callbacks)
 router.post("/payment-update", updatePaymentStatus);
+
+// Add new routes for updating orders
+router.put("/:id", authenticate, updateOrder);
+
+// Add new routes for deleting orders
+router.delete("/:id", authenticate, deleteOrder);
+
 
 module.exports = router;
