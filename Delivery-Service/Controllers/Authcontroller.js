@@ -6,8 +6,10 @@ const jwt = require('jsonwebtoken');
 exports.RegisterDriver = async (req, res) => {
     try {
         const {
-            firstName, lastName, age, gender, mobile, email, password
+            firstName, lastName, age, gender, mobile, email, password, latitude, longitude
         } = req.body;
+
+
 
 
         const existingUser = await VehicleWithUser.findOne({ 'user.email': email });
@@ -20,13 +22,19 @@ exports.RegisterDriver = async (req, res) => {
             user: {
                 firstName,
                 lastName,
+                email,
+                password,
+                mobile,
                 age,
                 gender,
                 mobile,
-                email,
-                password
-            },
+                location: {
+                    latitude,  // Include latitude
+                    longitude, // Include longitude
 
+
+                },
+            }
         });
 
 
@@ -34,7 +42,7 @@ exports.RegisterDriver = async (req, res) => {
 
         // Create a JWT token
         const token = jwt.sign(
-            { userId: newDriver._id, },
+            { id: newDriver._id, },
             process.env.JWT_SECRET, // This should be an environment variable
             { expiresIn: '1h' } // Token expiration time
         );

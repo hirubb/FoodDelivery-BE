@@ -3,30 +3,30 @@ const VehicleWithUser = require('../Models/Driver');
 
 const auth = async (req, res, next) => {
     try {
-        // Extract token from the 'Authorization' header
+
         const token = req.header('Authorization')?.replace('Bearer ', '');
 
-        // Check if the token exists
+
         if (!token) {
             return res.status(401).json({ message: 'Authorization token is required' });
         }
 
-        // Verify the token using the secret key
+
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        console.log('Decoded token:', decoded.userId); // Debugging line
+        console.log('Decoded token:', decoded.id);
 
-        // Find the user by userId from the token
-        const user = await VehicleWithUser.findOne({ _id: decoded.userId });
 
-        // If no user is found, return an error
+        const user = await VehicleWithUser.findOne({ _id: decoded.id });
+
+
         if (!user) {
             return res.status(401).json({ message: 'User not found, authentication failed' });
         }
 
 
         req.user = req.user || {};
-        req.user._id = decoded.userId;
+        req.user._id = decoded.id;
 
         next();
 

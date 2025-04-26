@@ -37,7 +37,15 @@ exports.getVehicle = async (req, res) => {
             return res.status(404).json({ message: 'Vehicle not found' });
         }
 
-        res.json(vehicle.vehicle);
+
+
+        res.status(200).json({
+            message: 'Vehicle fetched successfully',
+            Vehicle: vehicle.vehicle
+        });
+
+
+
     } catch (error) {
         console.error('Error in getVehicle:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -59,6 +67,8 @@ exports.updateVehicle = async (req, res) => {
             licensePlate,
         } = req.body;
 
+        console.log('body:', req.body);
+
         let Vehicle = await VehicleWithUser.findById(req.user._id);
         if (!Vehicle) {
             return res.status(404).json({ message: 'Vehicle not found' });
@@ -74,9 +84,7 @@ exports.updateVehicle = async (req, res) => {
         const sideViewImage = req.files['sideViewImage'] ? req.files['sideViewImage'][0] : null;
 
 
-        if (!sideViewImage && !frontViewImage) {
-            return res.status(400).json({ message: 'Vehicle both frontview and sideview is required' });
-        }
+
 
         if (frontViewImage) {
             const frontViewImageUrl = await uploadToCloudinary(frontViewImage);

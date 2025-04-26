@@ -34,7 +34,7 @@ const vehicleWithUserSchema = new mongoose.Schema({
         },
         gender: {
             type: String,
-            enum: ['male', 'female', 'other'],
+            enum: ['Male', 'Female', 'Other'],
             required: true
         },
         profileImage: {
@@ -44,6 +44,16 @@ const vehicleWithUserSchema = new mongoose.Schema({
         available: {
             type: Boolean,
             default: true
+        },
+        location: {
+            latitude: {
+                type: Number,
+                default: null
+            },
+            longitude: {
+                type: Number,
+                default: null
+            },
         },
         role: {
             type: String,
@@ -139,12 +149,12 @@ const vehicleWithUserSchema = new mongoose.Schema({
                     default: false
                 }
             }
+
+
+
+
         },
-        status: {
-            type: String,
-            enum: ['pending', 'verified', 'rejected'],
-            default: 'pending'
-        }
+
     }
 }, {
     timestamps: true

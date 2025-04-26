@@ -1,121 +1,92 @@
-// controllers/order.controller.js
-const Order = require('../Models/Order');
-const Earnings = require('../Models/Earning');
+const axios = require('axios');
+const VehicleWithUser = require('../Models/Driver');
+const Delivery = require('../Models/Delivery');
+const haversineDistance = require('../Utils/DistanceCalculation');
 
-// Get available orders
-exports.getAvailableOrders = async (req, res) => {
+const DriverAssign = async (req, res) => {
     try {
-        const orders = await Order.find({
-            driver: null,
-            status: 'pending'
-        }).sort({ createdAt: -1 });
 
-        res.json(orders);
-    } catch (error) {
-        console.error('Error in getAvailableOrders:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
+        const Payments = await axios.get('http://localhost:5002/api/payments/customer/GetAllPayments');
 
-// Get driver's orders with status filter
-exports.getDriverOrders = async (req, res) => {
-    try {
-        const { status } = req.query;
+        const paidPayments = Payments.filter(Payments => Payments.Payments === "success");
 
-        let query = { driver: req.user._id };
 
-        if (status) {
-            query.status = status;
-        }
+        for (const payment of paidPayments) {
 
-        const orders = await Order.find(query).sort({ updatedAt: -1 });
+            const PaidorderId = payment.orderId;
 
-        res.json(orders);
-    } catch (error) {
-        console.error('Error in getDriverOrders:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
 
-// Get order by ID
-exports.getOrderById = async (req, res) => {
-    try {
-        const order = await Order.findById(req.params.id);
+            const response = await axios.get(`http://localhost:5001/orders/${PaidorderId}`);
+            const orders = response.data.orders;
 
-        if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
 
-        // Check if order belongs to this driver or is available
-        if (order.driver && !order.driver.equals(req.user._id)) {
-            return res.status(403).json({ message: 'Not authorized to access this order' });
-        }
 
-        res.json(order);
-    } catch (error) {
-        console.error('Error in getOrderById:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
+            for (const order of paidOrders) {
+                const CustomerID = order.customerId;
+                const RestaurantID = order.restaurantId;
 
-// Update order status
-exports.updateOrderStatus = async (req, res) => {
-    try {
-        const { status } = req.body;
+                let restaurant;
+                let customer;
 
-        if (!['accepted', 'picked', 'in-progress', 'completed', 'cancelled'].includes(status)) {
-            return res.status(400).json({ message: 'Invalid status' });
-        }
+                try {
+                    const restaurantResponse = await axios.get(`http://localhost:4000/api/restaurant/${RestaurantID}`);
+                    restaurant = restaurantResponse.data;
 
-        const order = await Order.findById(req.params.id);
+                    const customerResponse = await axios.get(`http://localhost:7000/api/customer/${CustomerID}`);
+                    customer = customerResponse.data;
+                } catch (err) {
+                    console.error('Error fetching restaurant or customer data:', err.message);
+                    continue; // Skip this iteration if fetching restaurant or customer data fails
+                }
 
-        if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
+                const restaurantLat = restaurant.latitude;
+                const restaurantLon = restaurant.longitude;
 
-        // For accepting a pending order
-        if (status === 'accepted' && order.status === 'pending') {
-            if (order.driver) {
-                return res.status(400).json({ message: 'Order already assigned to a driver' });
+                const deliveryPersons = await VehicleWithUser.find({
+                    'user.available': true,
+                    'user.location.latitude': { $ne: null },
+                    'user.location.longitude': { $ne: null }, // Fixed the typo here
+                });
+
+                let nearestDriver = null;
+                let shortestDistance = Infinity;
+
+                for (const driver of deliveryPersons) {
+                    const driverLat = driver.user.location.latitude;
+                    const driverLon = driver.user.location.longitude; // Fixed the typo here
+                    const distance = haversineDistance(driverLat, driverLon, restaurantLat, restaurantLon);
+
+                    if (distance < shortestDistance) {
+                        shortestDistance = distance;
+                        nearestDriver = driver;
+                    }
+                }
+
+                if (nearestDriver) {
+                    const deliveryData = {
+                        orderid: order._id,
+                        driverid: nearestDriver._id,
+                        customerid: customer._id,
+                        longitude: nearestDriver.user.location.longitude, // Fixed the typo here
+                        latitude: nearestDriver.user.location.latitude,
+                    };
+
+                    const newDelivery = new Delivery(deliveryData);
+
+                    try {
+                        await newDelivery.save();
+                        console.log(`Saved delivery for OrderID: ${order._id} with DriverID: ${nearestDriver._id}`);
+                    } catch (err) {
+                        console.error('Error saving delivery:', err.message);
+                    }
+                }
             }
 
-            order.driver = req.user._id;
+            res.status(200).json({ message: 'Driver assignments processed successfully.' });
+        } catch (error) {
+            console.error('Error processing paid orders:', error.message);
+            res.status(500).json({ message: 'Error processing paid orders' });
         }
-        // For other status updates, check if order belongs to this driver
-        else if (!order.driver || !order.driver.equals(req.user._id)) {
-            return res.status(403).json({ message: 'Not authorized to update this order' });
-        }
+    };
 
-        // Update status and add to history
-        order.status = status;
-        order.statusHistory.push({
-            status,
-            timestamp: new Date()
-        });
-
-        await order.save();
-
-        // If order is completed, create earnings record
-        if (status === 'completed') {
-            const earnings = new Earnings({
-                driver: req.user._id,
-                order: order._id,
-                amount: order.totalAmount * 0.8, // Example: driver gets 80% of order total
-                tip: 0, // Can be updated later
-                bonus: 0, // Can be updated later
-                totalEarning: order.totalAmount * 0.8,
-                deliveryDate: new Date()
-            });
-
-            await earnings.save();
-        }
-
-        res.json({
-            message: 'Order status updated successfully',
-            order
-        });
-    } catch (error) {
-        console.error('Error in updateOrderStatus:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
+    exports.DriverAssign = DriverAssign;
