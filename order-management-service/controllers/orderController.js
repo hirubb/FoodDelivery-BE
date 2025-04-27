@@ -484,3 +484,71 @@ exports.deleteOrder = async (req, res) => {
     });
   }
 };
+
+exports.getIncome = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { dateRange, groupBy } = req.body; // groupBy can be 'day' or 'month'
+
+    if (!restaurantId) {
+      return res.status(400).json({ error: "Restaurant ID is required" });
+    }
+
+    // Build the match stage for aggregation
+    const matchStage = {
+      restaurantId: restaurantId,
+      createdAt: {
+        $gte: new Date(dateRange.start), // assuming start and end dates come from frontend
+        $lte: new Date(dateRange.end)
+      },
+      paymentStatus: 'Paid' // Only count paid orders
+    };
+
+    // Define group format
+    let groupStage;
+    if (groupBy === 'month') {
+      groupStage = {
+        _id: { 
+          year: { $year: "$createdAt" }, 
+          month: { $month: "$createdAt" }
+        },
+        totalIncome: { $sum: "$totalAmount" }
+      };
+    } else {
+      // default is grouping by day
+      groupStage = {
+        _id: { 
+          year: { $year: "$createdAt" }, 
+          month: { $month: "$createdAt" }, 
+          day: { $dayOfMonth: "$createdAt" }
+        },
+        totalIncome: { $sum: "$totalAmount" }
+      };
+    }
+
+    const incomeData = await Order.aggregate([
+      { $match: matchStage },
+      { $group: groupStage },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } } // sort by time ascending
+    ]);
+
+    // Format the data nicely for frontend (x, y)
+    const formattedData = incomeData.map(item => {
+      const { year, month, day } = item._id;
+      const dateString = groupBy === 'month' 
+        ? `${year}-${String(month).padStart(2, '0')}`
+        : `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      return {
+        date: dateString,
+        income: item.totalIncome
+      };
+    });
+
+    res.json({ success: true, data: formattedData });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error fetching Income" });
+  }
+};

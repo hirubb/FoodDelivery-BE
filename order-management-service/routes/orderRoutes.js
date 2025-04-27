@@ -10,7 +10,8 @@ const {
   getOrderById,
   updatePaymentStatus,
   updateOrder,   // Add the new controller functions
-  deleteOrder
+  deleteOrder,
+  getIncome
 } = require("../controllers/orderController.js");
 
 // No middleware needed - orders can be placed without authentication
@@ -36,6 +37,8 @@ router.put("/:id", authenticate, updateOrder);
 
 // Add new routes for deleting orders
 router.delete("/:id", authenticate, deleteOrder);
+
+router.post("/getIncome/:restaurantId",getIncome);
 
 
 module.exports = router;
