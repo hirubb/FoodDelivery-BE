@@ -436,7 +436,8 @@ const getOrderDetails = async (req, res) => {
       enrichedOrders.push({
         orderId: order._id,
         restaurantId: order.restaurantId,
-        items: populatedItems
+        items: populatedItems,
+        status: order.status
       });
     }
 

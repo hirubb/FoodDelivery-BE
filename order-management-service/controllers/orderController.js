@@ -552,3 +552,34 @@ exports.getIncome = async (req, res) => {
     res.status(500).json({ error: "Error fetching Income" });
   }
 };
+
+exports.orderStatusUpdate = async (req, res) => {
+
+  const { orderId } = req.params; // Get orderId from URL params
+  const { newStatus } = req.body; 
+
+  try {
+    // Find the order by orderId
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Update the order status
+    order.status = newStatus;
+
+    // Save the updated order
+    await order.save();
+
+    // Return the updated order data as the response
+    return res.status(200).json({ message: 'Order status updated successfully', order });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Failed to update order status', error: err.message });
+  }
+
+
+
+
+}
