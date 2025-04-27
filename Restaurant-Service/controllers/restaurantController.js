@@ -139,7 +139,8 @@ const getApprovedRestaurants = async (req, res) => {
     const { searchTerm, cuisine_type } = req.query;
 
     const filter = {
-      status: 'approved' // Always only fetch approved restaurants
+      status: 'approved' ,// Always only fetch approved restaurants
+      availability:true
     };
 
     if (searchTerm) {
@@ -272,6 +273,39 @@ const getTopRatedRestaurants = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+const updateAvailability = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { availability } = req.body;
+    const userId = req.userId; // Assuming the userId is set via authentication middleware
+
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found.' });
+    }
+
+    if (restaurant.owner_id.toString() !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to update this restaurant.' });
+    }
+
+    // Step 2: Update availability
+    restaurant.availability = availability;
+
+    // Step 3: Save the updated restaurant
+    await restaurant.save();
+
+    // Step 4: Return the updated availability
+    res.status(200).json({
+      message: 'Availability updated successfully.',
+      availability: restaurant.availability
+    });
+  } catch (error) {
+    console.error('Error setting restaurant availability:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 const getRestaurantById = async (req, res) => {
   try {
     const { restaurantId } = req.params;
@@ -436,7 +470,10 @@ const getOrderDetails = async (req, res) => {
       enrichedOrders.push({
         orderId: order._id,
         restaurantId: order.restaurantId,
-        items: populatedItems
+        items: populatedItems,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        createdAt : order.createdAt
       });
     }
 
@@ -467,5 +504,6 @@ module.exports = {
   getRestaurantOrders,
   getOrderDetails,
   getApprovedRestaurants,
+  updateAvailability
 
 };
