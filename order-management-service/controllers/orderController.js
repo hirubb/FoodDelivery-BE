@@ -348,7 +348,7 @@ exports.updatePaymentStatus = async (req, res) => {
     
     // If payment is successful, update the order status to Confirmed
     if (paymentStatus === 'Paid') {
-      order.status = "Confirmed";
+      order.status = "Pending";
       // Add timestamp for when payment was confirmed
       order.paymentConfirmedAt = new Date();
       console.log(`Order ${orderId} status updated to Confirmed`);
