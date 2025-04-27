@@ -439,6 +439,7 @@ const getOrderDetails = async (req, res) => {
         items: populatedItems,
         status: order.status,
         paymentStatus: order.paymentStatus,
+        createdAt : order.createdAt
       });
     }
 
