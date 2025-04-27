@@ -10,6 +10,7 @@ const registerRestaurantOwner = async (req, res) => {
 
     const existingOwnerByEmail = await RestaurantOwner.findOne({ email });
     const existingOwnerByUsername = await RestaurantOwner.findOne({ username });
+    const existingOwnerByPhone = await RestaurantOwner.findOne({ phone });
 
     if (existingOwnerByEmail) {
       return res.status(400).json({ message: "Email is already registered!" });
@@ -17,6 +18,10 @@ const registerRestaurantOwner = async (req, res) => {
 
     if (existingOwnerByUsername) {
       return res.status(400).json({ message: "Username is already taken!" });
+    }
+
+    if (existingOwnerByPhone) {
+      return res.status(400).json({ message: "Phone number is already taken!" });
     }
 
     const profile_image = req.file ? req.file.path : null;

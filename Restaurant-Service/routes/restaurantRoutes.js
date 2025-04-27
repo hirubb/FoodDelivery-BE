@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { registerRestaurant,myRestaurants,getAllRestaurants,getApprovedRestaurants,rateRestaurant,getTopRatedRestaurants,getRestaurantById,updateStatus,edtRestaurant,getRestaurantOrders,getOrderDetails } = require("../controllers/restaurantController");
+const { registerRestaurant,myRestaurants,getAllRestaurants,getApprovedRestaurants,rateRestaurant,getTopRatedRestaurants,getRestaurantById,updateStatus,edtRestaurant,getRestaurantOrders,getOrderDetails,updateAvailability } = require("../controllers/restaurantController");
 const authenticate = require("../middleware/authMiddleware"); 
 const upload = require("../middleware/upload");
 const menuController = require("../controllers/menuController");
@@ -21,6 +21,8 @@ router.put("/edit/:restaurantId", authenticate,
           edtRestaurant);
 // router.get("/get-orders/:restaurantId",getRestaurantOrders)
 router.post("/sendOrderDetails/",getOrderDetails)
+
+router.patch("/availability/:restaurantId",authenticate,updateAvailability)
 
 
 
