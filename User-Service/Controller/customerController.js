@@ -132,10 +132,26 @@ const getCustomerById = async (req, res) => {
   }
 };
 
+const deleteCustomerById = async(req,res) => {
+  const customerId = req.params.customerId;
+  try {
+    const deletedCustomer = await Customer.findByIdAndDelete(customerId);
+    if (!deletedCustomer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    res.status(200).json({ message: 'Customer deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting customer:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+
+}
 module.exports = {
   registerCustomer,
   loginCustomer,
   profile,
   getAllUsers,
   getCustomerById,
+  deleteCustomerById
 };

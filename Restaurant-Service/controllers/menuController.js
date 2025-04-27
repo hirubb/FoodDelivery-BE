@@ -39,7 +39,7 @@ exports.updateMenu = async (req, res) => {
     const menu = await Menu.findByIdAndUpdate(
       menuId,
       { name, description },
-      { new: true }
+      
     );
 
     if (!menu) return res.status(404).json({ message: "Menu not found" });

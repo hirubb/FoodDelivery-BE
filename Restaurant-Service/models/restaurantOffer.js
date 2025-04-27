@@ -60,4 +60,5 @@ restaurantOfferSchema.pre('save', async function (next) {
 });
 
 
+
 module.exports = mongoose.model('RestaurantOffer', restaurantOfferSchema);

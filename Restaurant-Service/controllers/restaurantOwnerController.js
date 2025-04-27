@@ -201,11 +201,27 @@ const editRestaurantOwner = async (req, res) => {
   }
 };
 
+const deleteOwnerById = async(req,res) => {
+  const ownerId = req.params.ownerId;
+  try {
+    const deletedOwner = await RestaurantOwner.findByIdAndDelete(ownerId);
+    if (!deletedOwner) {
+      return res.status(404).json({ message: 'Owner not found' });
+    }
+    res.status(200).json({ message: 'Owner deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting Owner:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+
+}
+
 module.exports = {
   registerRestaurantOwner,
   loginRestaurantOwner,
   profile,
   getAllUsers,
-  editRestaurantOwner
+  editRestaurantOwner,
+  deleteOwnerById
 
 };

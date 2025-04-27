@@ -8,6 +8,7 @@ router.post('/', authenticateToken, offerController.createOffer); // Protect thi
 router.get('/', offerController.getAllOffers);
 router.get('/restaurant', offerController.getAllRestaurantOffers);
 router.get('/restaurant/:restaurantId',authenticateToken ,offerController.getOffersByRestaurantId);
+router.put("/:offerId",authenticateToken,offerController.editOffer);
 
 
 module.exports = router;
