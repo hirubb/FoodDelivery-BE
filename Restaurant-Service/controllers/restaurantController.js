@@ -437,7 +437,8 @@ const getOrderDetails = async (req, res) => {
         orderId: order._id,
         restaurantId: order.restaurantId,
         items: populatedItems,
-        status: order.status
+        status: order.status,
+        paymentStatus: order.paymentStatus,
       });
     }
 
