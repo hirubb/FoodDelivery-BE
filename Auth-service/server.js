@@ -84,7 +84,7 @@ async function(accessToken, refreshToken, profile, done) {
         password: await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10), // Hash the password
         role: "Customer",
         googleId: profile.id,
-        username: profile.first_name,
+        username: profile.name?.givenName || profile.displayName.split(' ')[0],
         phone: "",
         createdAt: new Date(),
         updatedAt: new Date(),
