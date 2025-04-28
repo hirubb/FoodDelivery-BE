@@ -8,13 +8,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies 
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
 # Expose port
-EXPOSE 5000
+EXPOSE 4999
 
 # Start service
 CMD ["npm", "run" , "dev"]
