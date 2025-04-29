@@ -9,6 +9,7 @@ const authRoutes = require('./Routes/AuthRoutes');
 const driverRoutes = require('./Routes/DriverRoutes');
 const vehicleRoutes = require('./Routes/VehicleRoutes');
 const orderRoutes = require('./Routes/OrderRoute');
+const DeliveryRoutes = require('./Routes/DeliveryRoutes');
 const earningsRoutes = require('./Routes/EarningRoutes');
 
 // Load environment variables
@@ -37,6 +38,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/vehicle', vehicleRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/delivery', DeliveryRoutes);
 app.use('/api/earnings', earningsRoutes);
 
 // Error handling middleware

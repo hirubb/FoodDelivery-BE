@@ -37,7 +37,15 @@ exports.getVehicle = async (req, res) => {
             return res.status(404).json({ message: 'Vehicle not found' });
         }
 
-        res.json(vehicle.vehicle);
+
+
+        res.status(200).json({
+            message: 'Vehicle fetched successfully',
+            Vehicle: vehicle.vehicle
+        });
+
+
+
     } catch (error) {
         console.error('Error in getVehicle:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -51,39 +59,63 @@ exports.getVehicle = async (req, res) => {
 // Update vehicle details
 exports.updateVehicle = async (req, res) => {
     try {
-        const updates = Object.keys(req.body);
-        const allowedUpdates = ['vehicleType', 'vehicleModel', 'manufactureYear', 'licensePlate'];
 
-        // Check if updates are valid
-        const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-        if (!isValidOperation) {
-            return res.status(400).json({ message: 'Invalid updates' });
-        }
+        const {
+            vehicleModel,
+            vehicleType,
+            manufactureYear,
+            licensePlate,
+        } = req.body;
 
-        const vehicle = await VehicleWithUser.findOne({ driver: req.user._id });
+        console.log('body:', req.body);
 
-        if (!vehicle) {
+        let Vehicle = await VehicleWithUser.findById(req.user._id);
+        if (!Vehicle) {
             return res.status(404).json({ message: 'Vehicle not found' });
         }
 
-        // Apply updates
-        updates.forEach(update => vehicle[update] = req.body[update]);
-        await vehicle.save();
+        if (vehicleModel) Vehicle.vehicle.vehicleModel = vehicleModel;
+        if (vehicleType) Vehicle.vehicle.vehicleType = vehicleType;
+        if (manufactureYear) Vehicle.vehicle.manufactureYear = manufactureYear;
+        if (licensePlate) Vehicle.vehicle.licensePlate = licensePlate;
 
-        res.json({
-            message: 'Vehicle updated successfully',
-            vehicle
+
+        const frontViewImage = req.files['frontViewImage'] ? req.files['frontViewImage'][0] : null;
+        const sideViewImage = req.files['sideViewImage'] ? req.files['sideViewImage'][0] : null;
+
+
+
+
+        if (frontViewImage) {
+            const frontViewImageUrl = await uploadToCloudinary(frontViewImage);
+            Vehicle.vehicle.images.frontView = frontViewImageUrl;
+        };
+        if (sideViewImage) {
+            const sideViewImageUrl = await uploadToCloudinary(sideViewImage);
+            Vehicle.vehicle.images.sideView = sideViewImageUrl;
+        };
+
+        await Vehicle.save();
+
+        res.status(200).json({
+            message: 'Driver Details updated successfully',
+            driver: Vehicle.vehicle
         });
-    } catch (error) {
-        console.error('Error in updateVehicle:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
+
+    } catch (err) {
+        console.error('Error in update Driver  Details :', err);
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
+
 };
+
+
+
 
 
 exports.VehicleDetailsSignUp = async (req, res) => {
     try {
-        // Get text fields from req.body
+
         const {
             vehicleModel,
             manufactureYear,
@@ -93,23 +125,23 @@ exports.VehicleDetailsSignUp = async (req, res) => {
         console.log('req.files type:', typeof req.files);
         console.log('req.files structure:', req.files);
 
-        // Find the vehicle document
+
         const vehiclewithuser = await VehicleWithUser.findOne({ _id: req.user._id });
 
         if (!vehiclewithuser) {
             return res.status(404).json({ message: 'Vehicle not found' });
         }
 
-        // Update vehicle details
+
         if (vehicleModel) vehiclewithuser.vehicle.vehicleModel = vehicleModel;
         if (manufactureYear) vehiclewithuser.vehicle.manufactureYear = manufactureYear;
         if (licensePlate) vehiclewithuser.vehicle.licensePlate = licensePlate;
 
-        // Safer file access function that works with different req.files structures
+
         const getFile = (fieldname) => {
             if (!req.files) return null;
 
-            // If req.files is an array
+
             if (Array.isArray(req.files)) {
                 return req.files.find(f =>
                     f.fieldname === fieldname ||
@@ -117,14 +149,14 @@ exports.VehicleDetailsSignUp = async (req, res) => {
                 );
             }
 
-            // If req.files is an object with field name keys
+
             if (req.files[fieldname]) {
                 return Array.isArray(req.files[fieldname])
                     ? req.files[fieldname][0]
                     : req.files[fieldname];
             }
 
-            // Check for tab-suffixed field name
+
             const tabFieldname = `${fieldname}`;
             if (req.files[tabFieldname]) {
                 return Array.isArray(req.files[tabFieldname])
@@ -135,7 +167,7 @@ exports.VehicleDetailsSignUp = async (req, res) => {
             return null;
         };
 
-        // Upload files to Cloudinary
+
         const insuranceFile = getFile('insuranceFile');
         if (insuranceFile) {
             const insuranceUrl = await uploadToCloudinary(insuranceFile);
@@ -175,7 +207,6 @@ exports.VehicleDetailsSignUp = async (req, res) => {
             vehiclewithuser.vehicle.images.sideView = sideViewUrl;
         }
 
-        // Save the updated document
         await vehiclewithuser.save();
 
         res.json({

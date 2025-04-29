@@ -19,7 +19,7 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Pending", "Confirmed", "Preparing", "Out for Delivery", "Delivered"],
+    enum: ["Pending", "Confirmed", "Preparing", "Driver Assigned", "On The Way To Restuarent", "Out for Delivery", "Delivered"],  // Added Driver Assigned status(Gayashan)
     default: "Pending",
   },
   paymentStatus: {
@@ -61,7 +61,7 @@ const orderSchema = new mongoose.Schema({
 });
 
 // Add validation middleware
-orderSchema.pre('save', async function(next) {
+orderSchema.pre('save', async function (next) {
   if (!mongoose.Types.ObjectId.isValid(this.customerId)) {
     throw new Error('Invalid customer ID format');
   }

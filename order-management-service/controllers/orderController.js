@@ -8,7 +8,7 @@ const RESTAURANT_BASE_URL = process.env.RESTAURANT_BASE_URL;
 exports.placeOrder = async (req, res) => {
   // Get customer information and total amount directly from request body
   const customerId = req.userId;
-  const {restaurantId, items, totalAmount,deliveryLocation } = req.body;
+  const { restaurantId, items, totalAmount, deliveryLocation } = req.body;
 
   try {
     console.log("➡️ Incoming Order Request:", req.body);
@@ -26,14 +26,14 @@ exports.placeOrder = async (req, res) => {
     try {
       const restaurantRes = await axios.get(`${RESTAURANT_BASE_URL}/${restaurantId}`);
       if (!restaurantRes.data) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: "Restaurant not found" 
+          error: "Restaurant not found"
         });
       }
-      
+
       console.log("✅ Restaurant validated:", restaurantId);
-      
+
     } catch (error) {
       console.error("Restaurant validation error:", error.message);
       return res.status(404).json({
@@ -47,7 +47,7 @@ exports.placeOrder = async (req, res) => {
     try {
       const menuRes = await axios.get(`${RESTAURANT_BASE_URL}/${restaurantId}/menu`);
       menu = menuRes.data;
-      
+
       if (!menuRes.data || !Array.isArray(menuRes.data)) {
         console.log("Invalid menu response:", menuRes.data);
         return res.status(404).json({
@@ -62,9 +62,9 @@ exports.placeOrder = async (req, res) => {
           error: "Restaurant menu is empty"
         });
       }
-      
+
       console.log("✅ Menu fetched successfully:", menu.length, "items");
-      
+
     } catch (error) {
       console.error("Menu fetch error:", error.message);
       console.error("Full error:", error.response?.data || error);
@@ -82,22 +82,22 @@ exports.placeOrder = async (req, res) => {
         error: "Order must contain at least one item"
       });
     }
-    
+
     // Find all menu items to validate against
     const allMenuItems = menu.flatMap(category => category.menu_items || []);
-    
+
     const invalidItems = items.filter(orderItem =>
       !allMenuItems.some(menuItem => menuItem._id === orderItem.menuItemId)
     );
 
     if (invalidItems.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: "Invalid menu items", 
-        invalidItems 
+        error: "Invalid menu items",
+        invalidItems
       });
     }
-    
+
     console.log("✅ All menu items validated");
 
     // ✅ 5. Validate total amount
@@ -107,8 +107,8 @@ exports.placeOrder = async (req, res) => {
         error: "Valid total amount is required"
       });
     }
-     
-      // ✅ 6. Process location data
+
+    // ✅ 6. Process location data
     let locationData = null;
     if (deliveryLocation) {
       console.log("✅ Delivery location provided:", deliveryLocation);
@@ -118,7 +118,7 @@ exports.placeOrder = async (req, res) => {
         accuracy: deliveryLocation.accuracy,
         timestamp: deliveryLocation.timestamp
       };
-      
+
       // Optional: You could use a geocoding service here to get the address from coordinates
       // For example: locationData.address = await getAddressFromCoordinates(locationData);
     } else {
@@ -126,16 +126,16 @@ exports.placeOrder = async (req, res) => {
     }
 
     // ✅ 7. Save the order with generated orderId, total amount, and location
-        const newOrder = new Order({
-          orderId: uuidv4(),
-          customerId,
-          restaurantId,
-          items,
-          totalAmount,
-          deliveryLocation: locationData,
-          status: "Pending",
-          paymentStatus: "Unpaid"
-        });
+    const newOrder = new Order({
+      orderId: uuidv4(),
+      customerId,
+      restaurantId,
+      items,
+      totalAmount,
+      deliveryLocation: locationData,
+      status: "Pending",
+      paymentStatus: "Unpaid"
+    });
 
     await newOrder.save();
 
@@ -148,10 +148,10 @@ exports.placeOrder = async (req, res) => {
 
   } catch (error) {
     console.error("🔥 Error during order creation:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      error: "Failed to create order", 
-      details: error.message 
+      error: "Failed to create order",
+      details: error.message
     });
   }
 };
@@ -201,15 +201,15 @@ exports.getOrdersByRestaurant = async (req, res) => {
 exports.sendOrderToRestaurant = async (req, res) => {
 
   try {
-    
+
     const { restaurantId } = req.params;
-    
+
     const orders = await Order.find({ restaurantId: restaurantId });
-    
+
     if (!orders) return res.status(404).json({ error: "Order not found for the restaurant" });
 
 
-    const response = await axios.post(`${RESTAURANT_BASE_URL}/sendOrderDetails`, {orders});
+    const response = await axios.post(`${RESTAURANT_BASE_URL}/sendOrderDetails`, { orders });
     res.json({ status: response.data });
 
   } catch (err) {
@@ -222,7 +222,7 @@ exports.sendOrderToRestaurant = async (req, res) => {
 // Get customer orders
 exports.getCustomerOrders = async (req, res) => {
   const { customerId } = req.params;
-  
+
   try {
     if (!mongoose.Types.ObjectId.isValid(customerId)) {
       return res.status(400).json({
@@ -230,9 +230,9 @@ exports.getCustomerOrders = async (req, res) => {
         error: "Invalid customer ID format"
       });
     }
-    
+
     const orders = await Order.find({ customerId }).sort({ createdAt: -1 });
-    
+
     res.status(200).json({
       success: true,
       orders
@@ -251,7 +251,7 @@ exports.getCustomerOrders = async (req, res) => {
 exports.getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if the ID is a valid MongoDB ObjectId or UUID
     let order;
     if (mongoose.Types.ObjectId.isValid(id)) {
@@ -261,21 +261,21 @@ exports.getOrderById = async (req, res) => {
       // If it's likely a UUID (orderId field)
       order = await Order.findOne({ orderId: id });
     }
-    
+
     if (!order) {
       return res.status(404).json({
         success: false,
         error: "Order not found"
       });
     }
-    
+
     // Add item details to the order
     // In a real app, you might need to fetch this from restaurants service
     try {
       const menuRes = await axios.get(`${RESTAURANT_BASE_URL}/${order.restaurantId}/menu`);
       const menu = menuRes.data;
       const allMenuItems = menu.flatMap(category => category.menu_items || []);
-      
+
       // Enhance order items with name and price from menu
       const enhancedItems = order.items.map(item => {
         const menuItem = allMenuItems.find(mi => mi._id === item.menuItemId);
@@ -285,18 +285,18 @@ exports.getOrderById = async (req, res) => {
           price: menuItem ? menuItem.price : 0
         };
       });
-      
+
       // Create a new object that includes the complete order plus enhanced items
       const completeOrder = {
         ...order.toObject(),
         items: enhancedItems
       };
-      
+
       return res.status(200).json({
         success: true,
         order: completeOrder
       });
-      
+
     } catch (error) {
       // If we can't fetch menu items, return order without enhanced data
       console.error("Error fetching menu items:", error.message);
@@ -306,7 +306,7 @@ exports.getOrderById = async (req, res) => {
         warning: "Could not retrieve full menu item details"
       });
     }
-    
+
   } catch (error) {
     console.error("Error fetching order:", error);
     return res.status(500).json({
@@ -321,19 +321,19 @@ exports.getOrderById = async (req, res) => {
 exports.updatePaymentStatus = async (req, res) => {
   try {
     const { orderId, paymentStatus, paymentId } = req.body;
-    
+
     console.log(`Updating order ${orderId} with payment status: ${paymentStatus}`);
-    
+
     if (!orderId || !paymentStatus) {
       return res.status(400).json({
         success: false,
         error: "Order ID and payment status are required"
       });
     }
-    
+
     // Find the order using orderId field (UUID)
     const order = await Order.findOne({ orderId: orderId });
-    
+
     if (!order) {
       console.error(`Order not found with orderId: ${orderId}`);
       return res.status(404).json({
@@ -341,11 +341,11 @@ exports.updatePaymentStatus = async (req, res) => {
         error: "Order not found"
       });
     }
-    
+
     // Update the order payment status
     const previousPaymentStatus = order.paymentStatus;
     order.paymentStatus = paymentStatus;
-    
+
     // If payment is successful, update the order status to Confirmed
     if (paymentStatus === 'Paid') {
       order.status = "Pending";
@@ -353,16 +353,16 @@ exports.updatePaymentStatus = async (req, res) => {
       order.paymentConfirmedAt = new Date();
       console.log(`Order ${orderId} status updated to Confirmed`);
     }
-    
+
     // Add payment ID reference if provided
     if (paymentId) {
       order.paymentId = paymentId;
     }
-    
+
     await order.save();
-    
+
     console.log(`Order ${orderId} payment status updated from ${previousPaymentStatus} to ${paymentStatus}`);
-    
+
     // Return detailed response for debugging
     res.status(200).json({
       success: true,
@@ -374,7 +374,7 @@ exports.updatePaymentStatus = async (req, res) => {
         previousPaymentStatus
       }
     });
-    
+
   } catch (error) {
     console.error("Error updating order payment status:", error);
     res.status(500).json({
@@ -389,17 +389,17 @@ exports.updatePaymentStatus = async (req, res) => {
 exports.updateOrder = async (req, res) => {
   const { id } = req.params;
   const { items, totalAmount, deliveryLocation } = req.body;
-  
+
   try {
     // Check if order exists
     const order = await Order.findById(id);
     if (!order) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: "Order not found" 
+        error: "Order not found"
       });
     }
-    
+
     // Check if order belongs to the authenticated user
     if (order.customerId.toString() !== req.userId) {
       return res.status(403).json({
@@ -407,7 +407,7 @@ exports.updateOrder = async (req, res) => {
         error: "You are not authorized to update this order"
       });
     }
-    
+
     // Check if order can be modified (only allow updates on Pending orders)
     if (order.status !== "Pending") {
       return res.status(400).json({
@@ -415,14 +415,14 @@ exports.updateOrder = async (req, res) => {
         error: "Cannot update an order that is already being processed"
       });
     }
-    
+
     // Update the order
     if (items) order.items = items;
     if (totalAmount) order.totalAmount = totalAmount;
     if (deliveryLocation) order.deliveryLocation = deliveryLocation;
-    
+
     await order.save();
-    
+
     res.status(200).json({
       success: true,
       message: "Order updated successfully",
@@ -441,7 +441,7 @@ exports.updateOrder = async (req, res) => {
 // Delete an order
 exports.deleteOrder = async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     // Check if order exists
     const order = await Order.findById(id);
@@ -451,7 +451,7 @@ exports.deleteOrder = async (req, res) => {
         error: "Order not found"
       });
     }
-    
+
     // Check if order belongs to the authenticated user
     if (order.customerId.toString() !== req.userId) {
       return res.status(403).json({
@@ -459,7 +459,7 @@ exports.deleteOrder = async (req, res) => {
         error: "You are not authorized to delete this order"
       });
     }
-    
+
     // Check if order can be deleted (only allow deletion of Pending orders)
     if (order.status !== "Pending") {
       return res.status(400).json({
@@ -467,10 +467,10 @@ exports.deleteOrder = async (req, res) => {
         error: "Cannot delete an order that is already being processed"
       });
     }
-    
+
     // Delete the order
     await Order.findByIdAndDelete(id);
-    
+
     res.status(200).json({
       success: true,
       message: "Order deleted successfully"
@@ -508,8 +508,8 @@ exports.getIncome = async (req, res) => {
     let groupStage;
     if (groupBy === 'month') {
       groupStage = {
-        _id: { 
-          year: { $year: "$createdAt" }, 
+        _id: {
+          year: { $year: "$createdAt" },
           month: { $month: "$createdAt" }
         },
         totalIncome: { $sum: "$totalAmount" }
@@ -517,9 +517,9 @@ exports.getIncome = async (req, res) => {
     } else {
       // default is grouping by day
       groupStage = {
-        _id: { 
-          year: { $year: "$createdAt" }, 
-          month: { $month: "$createdAt" }, 
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
           day: { $dayOfMonth: "$createdAt" }
         },
         totalIncome: { $sum: "$totalAmount" }
@@ -535,7 +535,7 @@ exports.getIncome = async (req, res) => {
     // Format the data nicely for frontend (x, y)
     const formattedData = incomeData.map(item => {
       const { year, month, day } = item._id;
-      const dateString = groupBy === 'month' 
+      const dateString = groupBy === 'month'
         ? `${year}-${String(month).padStart(2, '0')}`
         : `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
@@ -556,12 +556,12 @@ exports.getIncome = async (req, res) => {
 exports.orderStatusUpdate = async (req, res) => {
 
   const { orderId } = req.params; // Get orderId from URL params
-  const { newStatus } = req.body; 
+  const { newStatus } = req.body;
 
   try {
     // Find the order by orderId
     const order = await Order.findById(orderId);
-    
+
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -583,3 +583,30 @@ exports.orderStatusUpdate = async (req, res) => {
 
 
 }
+
+
+
+// Get all orders for Delivery Person - Gayashan
+exports.GetAllOrders = async (req, res) => {
+  try {
+
+
+    const orders = await Order.find()
+    if (!orders) return res.status(404).json({ error: "No orders found" });
+    res.json({ status: orders });
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching orders" });
+  }
+};
+
+// Get order by ID for Delivery Person - Gayashan
+exports.GetOrderIdForDeliveryRider = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json({ status: order });
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching order" });
+  }
+};

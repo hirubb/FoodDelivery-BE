@@ -56,9 +56,9 @@ const loginCustomer = async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
     // Make sure we're consistent with the id field name
-    const token = jwt.sign({ 
-      id: customer._id, 
-      role: customer.role 
+    const token = jwt.sign({
+      id: customer._id,
+      role: customer.role
     }, process.env.JWT_SECRET);
 
     return res.status(200).json({
@@ -82,9 +82,9 @@ const loginCustomer = async (req, res) => {
 const profile = async (req, res) => {
   try {
     console.log("Looking for customer with ID:", req.userId);
-    
+
     const customer = await Customer.findById(req.userId).select('-password');
-    
+
     if (!customer) {
       console.log("No customer found with ID:", req.userId);
       return res.status(404).json({ message: "Customer not found" });
@@ -132,7 +132,7 @@ const getCustomerById = async (req, res) => {
   }
 };
 
-const deleteCustomerById = async(req,res) => {
+const deleteCustomerById = async (req, res) => {
   const customerId = req.params.customerId;
   try {
     const deletedCustomer = await Customer.findByIdAndDelete(customerId);
@@ -151,14 +151,14 @@ const deleteCustomerById = async(req,res) => {
 const updateProfile = async (req, res) => {
   try {
     const { first_name, last_name, email, username, phone, password, delivery_address, city, postal_code } = req.body;
-    
+
     // Find the customer by ID from the authenticated token
     const customer = await Customer.findById(req.userId);
-    
+
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
-    
+
     // Check if email is already in use by another user
     if (email !== customer.email) {
       const existingEmail = await Customer.findOne({ email });
@@ -166,7 +166,7 @@ const updateProfile = async (req, res) => {
         return res.status(400).json({ message: "Email is already in use" });
       }
     }
-    
+
     // Check if username is already in use by another user
     if (username !== customer.username) {
       const existingUsername = await Customer.findOne({ username });
@@ -174,35 +174,35 @@ const updateProfile = async (req, res) => {
         return res.status(400).json({ message: "Username is already taken" });
       }
     }
-    
+
     // Update the customer's data
     customer.first_name = first_name || customer.first_name;
     customer.last_name = last_name || customer.last_name;
     customer.email = email || customer.email;
     customer.username = username || customer.username;
     customer.phone = phone || customer.phone;
-    
+
     // Optional fields
     if (delivery_address !== undefined) customer.delivery_address = delivery_address;
     if (city !== undefined) customer.city = city;
     if (postal_code !== undefined) customer.postal_code = postal_code;
-    
+
     // Only update password if provided
     if (password) {
       customer.password = password; // This will be hashed by the mongoose pre-save hook
     }
-    
+
     // Save the updated customer
     await customer.save();
-    
+
     // Return the updated customer without the password
     const updatedCustomer = await Customer.findById(req.userId).select('-password');
-    
-    return res.status(200).json({ 
-      message: "Profile updated successfully", 
-      customer: updatedCustomer 
+
+    return res.status(200).json({
+      message: "Profile updated successfully",
+      customer: updatedCustomer
     });
-    
+
   } catch (error) {
     console.error("Update profile error:", error);
     return res.status(500).json({ message: "Server error. Please try again later." });
