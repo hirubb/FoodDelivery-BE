@@ -1,2 +1,11 @@
 .qodo
 .env
+node_modules/
+README.md
+package-lock.json
+
+
+
+
+
+
