@@ -1,5 +1,5 @@
-// controllers/earnings.controller.js
 const Earnings = require('../Models/Earning');
+const Delivery = require('../Models/Delivery');
 
 // Get driver's earnings
 exports.getEarnings = async (req, res) => {
@@ -20,19 +20,35 @@ exports.getEarnings = async (req, res) => {
             startDate = new Date(0);
         }
 
-        const earnings = await Earnings.find({
-            driver: req.user._id,
-            deliveryDate: { $gte: startDate }
-        }).sort({ deliveryDate: -1 }).populate('order');
+        // Find deliveries for the driver within the specified period
+        const deliveries = await Delivery.find({
+            driverid: req.user._id,
+            Date: { $gte: startDate }
+        }).populate('order');
 
-        res.json(earnings);
+        let totalEarnings = 0;
+        let totalDistance = 0;
+
+        // Loop through deliveries and calculate earnings based on distance
+        for (const delivery of deliveries) {
+            // Assuming $5 per kilometer rate for earnings
+            const earningsPerKm = 5;
+            totalDistance += delivery.totalDistance;
+            totalEarnings += delivery.totalDistance * earningsPerKm; // Total earnings from distance
+        }
+
+        res.json({
+            totalEarnings,
+            totalDistance,
+            ordersCount: deliveries.length
+        });
     } catch (error) {
         console.error('Error in getEarnings:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
-// Get earnings summary
+// Get earnings summary (Daily, Weekly, Monthly, Yearly)
 exports.getEarningsSummary = async (req, res) => {
     try {
         const currentDate = new Date();
@@ -56,122 +72,36 @@ exports.getEarningsSummary = async (req, res) => {
         yearStart.setMonth(0, 1);
         yearStart.setHours(0, 0, 0, 0);
 
-        // Get daily earnings
-        const dailyEarnings = await Earnings.aggregate([
-            {
-                $match: {
-                    driver: req.user._id,
-                    deliveryDate: { $gte: todayStart }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalAmount: { $sum: '$amount' },
-                    totalTips: { $sum: '$tip' },
-                    totalBonus: { $sum: '$bonus' },
-                    totalEarnings: { $sum: '$totalEarning' },
-                    ordersCount: { $sum: 1 }
-                }
+        // Calculate earnings for each period
+        const getEarningsByPeriod = async (startDate) => {
+            const deliveries = await Delivery.find({
+                driverid: req.user._id,
+                Date: { $gte: startDate }
+            }).populate('order');
+
+            let totalEarnings = 0;
+            let totalDistance = 0;
+
+            for (const delivery of deliveries) {
+                const earningsPerKm = 5;
+                totalDistance += delivery.totalDistance;
+                totalEarnings += delivery.totalDistance * earningsPerKm;
             }
-        ]);
 
-        // Get weekly earnings
-        const weeklyEarnings = await Earnings.aggregate([
-            {
-                $match: {
-                    driver: req.user._id,
-                    deliveryDate: { $gte: weekStart }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalAmount: { $sum: '$amount' },
-                    totalTips: { $sum: '$tip' },
-                    totalBonus: { $sum: '$bonus' },
-                    totalEarnings: { $sum: '$totalEarning' },
-                    ordersCount: { $sum: 1 }
-                }
-            }
-        ]);
+            return { totalEarnings, totalDistance, ordersCount: deliveries.length };
+        };
 
-        // Get monthly earnings
-        const monthlyEarnings = await Earnings.aggregate([
-            {
-                $match: {
-                    driver: req.user._id,
-                    deliveryDate: { $gte: monthStart }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalAmount: { $sum: '$amount' },
-                    totalTips: { $sum: '$tip' },
-                    totalBonus: { $sum: '$bonus' },
-                    totalEarnings: { $sum: '$totalEarning' },
-                    ordersCount: { $sum: 1 }
-                }
-            }
-        ]);
+        const dailyEarnings = await getEarningsByPeriod(todayStart);
+        const weeklyEarnings = await getEarningsByPeriod(weekStart);
+        const monthlyEarnings = await getEarningsByPeriod(monthStart);
+        const yearlyEarnings = await getEarningsByPeriod(yearStart);
 
-        // Get yearly earnings
-        const yearlyEarnings = await Earnings.aggregate([
-            {
-                $match: {
-                    driver: req.user._id,
-                    deliveryDate: { $gte: yearStart }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalAmount: { $sum: '$amount' },
-                    totalTips: { $sum: '$tip' },
-                    totalBonus: { $sum: '$bonus' },
-                    totalEarnings: { $sum: '$totalEarning' },
-                    ordersCount: { $sum: 1 }
-                }
-            }
-        ]);
-
-        // Get recent payments
-        const recentPayments = await Earnings.find({
-            driver: req.user._id,
-            paymentStatus: 'completed'
-        }).sort({ paymentDate: -1 }).limit(5);
-
+        // Return the earnings summary
         res.json({
-            daily: dailyEarnings[0] || {
-                totalAmount: 0,
-                totalTips: 0,
-                totalBonus: 0,
-                totalEarnings: 0,
-                ordersCount: 0
-            },
-            weekly: weeklyEarnings[0] || {
-                totalAmount: 0,
-                totalTips: 0,
-                totalBonus: 0,
-                totalEarnings: 0,
-                ordersCount: 0
-            },
-            monthly: monthlyEarnings[0] || {
-                totalAmount: 0,
-                totalTips: 0,
-                totalBonus: 0,
-                totalEarnings: 0,
-                ordersCount: 0
-            },
-            yearly: yearlyEarnings[0] || {
-                totalAmount: 0,
-                totalTips: 0,
-                totalBonus: 0,
-                totalEarnings: 0,
-                ordersCount: 0
-            },
-            recentPayments
+            daily: dailyEarnings,
+            weekly: weeklyEarnings,
+            monthly: monthlyEarnings,
+            yearly: yearlyEarnings,
         });
     } catch (error) {
         console.error('Error in getEarningsSummary:', error);

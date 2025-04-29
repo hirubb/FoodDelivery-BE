@@ -28,12 +28,7 @@ exports.RegisterDriver = async (req, res) => {
                 age,
                 gender,
                 mobile,
-                location: {
-                    latitude,  // Include latitude
-                    longitude, // Include longitude
 
-
-                },
             }
         });
 

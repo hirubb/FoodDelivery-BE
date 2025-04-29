@@ -7,18 +7,11 @@ const router = express.Router();
 
 
 
+// Get Delivery  by ID
+router.get('/getDeliveryById', auth, orderController.getDeliveryById);
 
-// router.get('/available', orderController.getAvailableOrders);
+router.put('/updateDeliveryStatus', auth, orderController.updateDeliveryStatus);
 
-
-// // Get driver's orders
-// router.get('/', orderController.getDriverOrders);
-
-// // Get order by ID
-// router.get('/:id', orderController.getOrderById);
-
-// // Update order status
-// router.put('/:id/status', orderController.updateOrderStatus);
-
+router.get('/getAllDeliveriesForDriver', auth, orderController.getAllDeliveriesForDriver);
 
 module.exports = router;

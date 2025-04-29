@@ -56,8 +56,10 @@ exports.updateDriver = async (req, res) => {
     try {
 
         const {
-            firstName, lastName, age, gender, mobile, email, password,
+            firstName, lastName, age, gender, mobile, email, password, available, latitude, longitude
         } = req.body;
+
+        console.log("Driver Data:", available);
 
         // Find the driver by ID
         let driver = await VehicleWithUser.findById(req.user._id);
@@ -73,6 +75,9 @@ exports.updateDriver = async (req, res) => {
         if (mobile) driver.user.mobile = mobile;
         if (age) driver.user.age = age;
         if (gender) driver.user.gender = gender;
+        if (available !== undefined) driver.user.available = available;
+        if (latitude) driver.user.location.latitude = latitude;
+        if (longitude) driver.user.location.longitude = longitude;
 
 
         // Save the updated driver
@@ -156,17 +161,34 @@ exports.deleteDriver = async (req, res) => {
     }
 };
 
+
+
 exports.getAllUsers = async (req, res) => {
     try {
-      const users = await VehicleWithUser.find();
-      if (!users || users.length === 0) {
-        return res.status(404).json({ message: "No users found." });
-      }
-  
-      return res.status(200).json({ users });
+        const users = await VehicleWithUser.find();
+        if (!users || users.length === 0) {
+            return res.status(404).json({ message: "No users found." });
+        }
+
+        return res.status(200).json({ users });
     } catch (error) {
-      console.error("Error fetching all users:", error);
-      return res.status(500).json({ message: "Server error while fetching users." });
+        console.error("Error fetching all users:", error);
+        return res.status(500).json({ message: "Server error while fetching users." });
     }
-  };
-  
+};
+
+
+
+exports.GetDriverIDForMap = async (req, res) => {
+    try {
+        const users = await VehicleWithUser.find();
+        if (!users || users.length === 0) {
+            return res.status(404).json({ message: "No users found." });
+        }
+
+        return res.status(200).json({ users });
+    } catch (error) {
+        console.error("Error fetching all users:", error);
+        return res.status(500).json({ message: "Server error while fetching users." });
+    }
+};

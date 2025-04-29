@@ -29,4 +29,7 @@ router.post('/customer/order/:orderId/regenerate-coordinates', authenticateCusto
 // Manual sync endpoint to force update order status from payment
 router.post('/sync/:orderId', authenticateCustomer, paymentController.syncPaymentWithOrder);
 
+
+
+
 module.exports = router;

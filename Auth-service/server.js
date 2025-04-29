@@ -41,13 +41,14 @@ app.post("/api/login", async (req, res) => {
       services.map(async (service) => {
         try {
           const response = await axios.get(service.url);
-          // console.log(`🔍 Response from ${service.name}:`, response.data);
+          console.log(`🔍 Response from ${service.name}:`, response.data);
 
           let users = [];
 
           // Handle different response structures
           if (service.name === "DeliveryPerson" && response.data.drivers) {
             // Extract user data from driver objects
+            console.log("🚚 DeliveryPerson response:", response.data.drivers);
             users = response.data.drivers
               .filter(driver => driver.user) // Ensure user exists
               .map(driver => ({
@@ -77,10 +78,16 @@ app.post("/api/login", async (req, res) => {
     );
 
     // Flatten all user results into a single array
-    const allUsers = results.flat();
+    const allUsers = results.flatMap(result => result.value); // Correctly access the value array
+    console.log("🔍 All users retrieved:", allUsers); // Log the full array of users
 
     // Find user by email
-    const user = allUsers.find(user => user.email === email);
+    const user = allUsers.find(user => {
+      console.log("🔍 Checking user:", user); // Log each user to see their structure
+      return user.email.toLowerCase() === email.toLowerCase(); // Case-insensitive email comparison
+    });
+
+    console.log("🔍 User found:", user);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

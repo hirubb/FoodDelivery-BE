@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const DeliverySchema = new mongoose.Schema({
     orderid: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: String,
         ref: 'Order',
         required: true,
     },
@@ -16,21 +16,24 @@ const DeliverySchema = new mongoose.Schema({
         ref: 'Customer',
         required: true
     },
-    longitude: {
-        type: Number,
-        required: true
-    },
-
-    latitude: {
-        type: Number,
+    Restuarentid: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Restaurant',
         required: true
     },
     status: {
         type: String,
-        enum: ['accepted', 'picked', 'delivered'],
-        default: 'accepted',
+        enum: ['pending', 'Accepted', 'cancelled', 'picked', 'delivered'],
+        default: 'pending',
     },
-
+    totalDistance: {
+        type: Number, // Store distance in kilometers
+        required: true
+    },
+    Date: {
+        type: Date,
+        default: Date.now,
+    },
 });
 
 const Delivery = mongoose.model('Delivery', DeliverySchema);
