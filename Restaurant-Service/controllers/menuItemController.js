@@ -44,19 +44,26 @@ exports.getMenuItemsByMenu = async (req, res) => {
 // Update a menu item
 exports.updateMenuItem = async (req, res) => {
   try {
+    console.log(req.files); // Log files to see if they are being received
+
     const { menuItemId } = req.params;
     const updatedData = req.body;
+    
+    if (req.files && req.files.length > 0) {
+      updatedData.images = req.files.map(file => file.path);
+    }
 
     const menuItem = await MenuItem.findByIdAndUpdate(menuItemId, updatedData, { new: true });
 
-    if (!menuItem) return res.status(404).json({ message: "Menu item not found" });
+    if (!menuItem) {
+      return res.status(404).json({ message: "Menu item not found" });
+    }
 
     res.status(200).json(menuItem);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
 // Delete a menu item
 exports.deleteMenuItem = async (req, res) => {
   try {
