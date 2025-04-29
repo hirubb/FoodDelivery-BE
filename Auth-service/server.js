@@ -41,10 +41,6 @@ app.use(passport.session());
 console.log("Callback URL:", `${process.env.BASE_URL}/api/auth/google/callback`);
 
 // Configure Google Strategy
-// In server.js, modify the GoogleStrategy implementation:
-
-// In your GoogleStrategy implementation in server.js
-
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -251,9 +247,7 @@ app.get("/api/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
-// Google OAuth routes
-// In server.js, modify the Google callback handler:
-
+// Google OAuth callback handler
 app.get("/api/auth/google/callback",
   (req, res, next) => {
     passport.authenticate("google", { session: false }, (err, user, info) => {
