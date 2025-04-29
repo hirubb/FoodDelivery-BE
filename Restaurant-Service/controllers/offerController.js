@@ -123,3 +123,71 @@ exports.getOffersByRestaurantId = async (req, res) => {
 
 
 
+
+
+exports.editOffer = async (req, res) => {
+  try {
+    const { ...updateData } = req.body;
+    const { offerId } = req.params;
+
+
+    const type = "restaurant";
+    // Check if the user is authenticated
+    if (!req.userId) {
+      return res.status(403).json({ success: false, message: 'No authenticated user' });
+    }
+
+    let offer;
+
+    if (type === 'restaurant') {
+      // Ensure the user is a restaurant owner
+      if (req.role !== 'Restaurant Owner') {
+        return res.status(403).json({ success: false, message: 'Unauthorized: You are not a restaurant owner' });
+      }
+
+      // Find the offer
+      offer = await RestaurantOffer.findById(offerId);
+      if (!offer) {
+        return res.status(404).json({ success: false, message: 'Offer not found' });
+      }
+
+      // Check if the offer belongs to the current restaurant owner
+      if (offer.restaurantOwner.toString() !== req.userId) {
+        return res.status(403).json({ success: false, message: 'Unauthorized: You cannot edit this offer' });
+      }
+    } else if (type === 'system') {
+      // Ensure the user is an admin
+      if (req.role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Unauthorized: You are not an admin' });
+      }
+
+      // Find the offer
+      offer = await SystemOffer.findById(offerId);
+      if (!offer) {
+        return res.status(404).json({ success: false, message: 'Offer not found' });
+      }
+
+      // Check if the admin created this offer (optional — remove this if any admin can edit any system offer)
+      if (offer.createdByAdmin.toString() !== req.userId) {
+        return res.status(403).json({ success: false, message: 'Unauthorized: You cannot edit this system offer' });
+      }
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid offer type' });
+    }
+
+    // Update the offer with new data
+    Object.assign(offer, updateData);
+
+    await offer.save();
+
+    res.json({ success: true, data: offer });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
+
+
+

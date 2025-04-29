@@ -134,20 +134,67 @@ const myRestaurants = async(req,res)=>{
   }
 
 }
-const getAllRestaurants = async (req, res) => {
+const getApprovedRestaurants = async (req, res) => {
   try {
     const { searchTerm, cuisine_type } = req.query;
 
-    const filter = {};
+    const filter = {
+      status: 'approved' ,// Always only fetch approved restaurants
+      availability:true
+    };
 
     if (searchTerm) {
       // Match searchTerm with name OR city OR cuisine_type
       filter.$or = [
         { name: { $regex: searchTerm, $options: 'i' } },
         { city: { $regex: searchTerm, $options: 'i' } },
-        { cuisine_type: { $regex: searchTerm, $options: 'i' } }
+        { cuisine_type: { $regex: searchTerm, $options: 'i' } },
+       
       ];
     }
+    
+
+    if (cuisine_type) {
+      filter.cuisine_type = { $regex: cuisine_type, $options: 'i' };
+    }
+
+    const restaurants = await Restaurant.find(filter);
+
+    if (!restaurants || restaurants.length === 0) {
+      return res.status(404).json({
+        message: "No matching restaurants found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Restaurants fetched successfully",
+      data: restaurants,
+    });
+
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+const getAllRestaurants = async (req, res) => {
+  try {
+    const { searchTerm, cuisine_type } = req.query;
+
+    const filter ={}
+    
+    if (searchTerm) {
+      // Match searchTerm with name OR city OR cuisine_type
+      filter.$or = [
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { city: { $regex: searchTerm, $options: 'i' } },
+        { cuisine_type: { $regex: searchTerm, $options: 'i' } },
+       
+      ];
+    }
+    
 
     if (cuisine_type) {
       filter.cuisine_type = { $regex: cuisine_type, $options: 'i' };
@@ -226,6 +273,39 @@ const getTopRatedRestaurants = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+const updateAvailability = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { availability } = req.body;
+    const userId = req.userId; // Assuming the userId is set via authentication middleware
+
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found.' });
+    }
+
+    if (restaurant.owner_id.toString() !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to update this restaurant.' });
+    }
+
+    // Step 2: Update availability
+    restaurant.availability = availability;
+
+    // Step 3: Save the updated restaurant
+    await restaurant.save();
+
+    // Step 4: Return the updated availability
+    res.status(200).json({
+      message: 'Availability updated successfully.',
+      availability: restaurant.availability
+    });
+  } catch (error) {
+    console.error('Error setting restaurant availability:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 const getRestaurantById = async (req, res) => {
   try {
     const { restaurantId } = req.params;
@@ -390,7 +470,10 @@ const getOrderDetails = async (req, res) => {
       enrichedOrders.push({
         orderId: order._id,
         restaurantId: order.restaurantId,
-        items: populatedItems
+        items: populatedItems,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        createdAt : order.createdAt
       });
     }
 
@@ -400,6 +483,8 @@ const getOrderDetails = async (req, res) => {
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
+
+
 
 
 
@@ -417,5 +502,8 @@ module.exports = {
   updateStatus,
   edtRestaurant,
   getRestaurantOrders,
-  getOrderDetails
+  getOrderDetails,
+  getApprovedRestaurants,
+  updateAvailability
+
 };

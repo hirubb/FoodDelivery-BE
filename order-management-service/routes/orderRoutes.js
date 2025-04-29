@@ -10,7 +10,12 @@ const {
   getOrderById,
   updatePaymentStatus,
   GetAllOrders,
-  GetOrderIdForDeliveryRider
+  GetOrderIdForDeliveryRider,
+  updateOrder,   // Add the new controller functions
+  deleteOrder,
+  getIncome,
+  sendOrderToRestaurant,
+  orderStatusUpdate
 } = require("../controllers/orderController.js");
 
 // No middleware needed - orders can be placed without authentication
@@ -30,6 +35,17 @@ router.get("/:id", authenticate, getOrderById);
 
 // Add new route for payment status updates (no auth required for PayHere callbacks)
 router.post("/payment-update", updatePaymentStatus);
+
+// Add new routes for updating orders
+router.put("/:id", authenticate, updateOrder);
+
+// Add new routes for deleting orders
+router.delete("/:id", authenticate, deleteOrder);
+
+router.post("/getIncome/:restaurantId", getIncome);
+
+router.get("/restaurantOrders/:restaurantId", sendOrderToRestaurant);
+router.put("/status/update/:orderId", orderStatusUpdate)
 
 
 router.get("/DeliveryPerson/GetAllOrders", GetAllOrders); // Get all orders for a Delivery Person (Gayashan)

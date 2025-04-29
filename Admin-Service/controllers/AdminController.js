@@ -113,6 +113,7 @@ const registerAdmin = async (req, res) => {
   
       return res.status(200).json({
         admin: {
+          id: admin._id,
           first_name: admin.first_name,
           last_name: admin.last_name,
           email: admin.email,
@@ -166,7 +167,7 @@ const getAllRestauants = async(req, res)=>{
 
   try {
     // Replace with the actual URL of your Restaurant-Service
-    const restaurantServiceURL = "http://localhost:4000/api/restaurant/"; 
+    const restaurantServiceURL = "http://localhost:4000/api/restaurant/all"; 
 
     const response = await axios.get(restaurantServiceURL);
 
@@ -323,6 +324,57 @@ const getAllNotifications = async (req, res) => {
 }
 
 
+const updateAdmin = async (req, res) => {
+  try {
+    const adminId = req.params.adminId; 
+    const { first_name, last_name, email, username, phone, password } = req.body;
+
+    const admin = await Admin.findById(adminId);
+
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    // Update fields if provided
+    if (first_name) admin.first_name = first_name;
+    if (last_name) admin.last_name = last_name;
+    if (email) admin.email = email;
+    if (username) admin.username = username;
+    if (phone) admin.phone = phone;
+
+    // Update password if provided
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      admin.password = await bcrypt.hash(password, salt);
+    }
+
+    // Update profile image if uploaded
+    if (req.file) {
+      admin.profile_image = req.file.path;
+    }
+
+    await admin.save();
+
+    return res.status(200).json({
+      message: "Admin profile updated successfully",
+      admin: {
+        first_name: admin.first_name,
+        last_name: admin.last_name,
+        email: admin.email,
+        username: admin.username,
+        phone: admin.phone,
+        role: admin.role,
+        profile_image: admin.profile_image,
+      }
+    });
+
+  } catch (error) {
+    console.error("Error updating Admin:", error);
+    return res.status(500).json({ message: "Server error. Please try again later." });
+  }
+};
+
+
 
   module.exports = {
     registerAdmin,
@@ -335,6 +387,7 @@ const getAllNotifications = async (req, res) => {
     getCustomers,
     getDrivers,
     notifyRegistration,
-    getAllNotifications
+    getAllNotifications,
+    updateAdmin
   
   };

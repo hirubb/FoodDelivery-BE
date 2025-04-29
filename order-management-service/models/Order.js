@@ -31,6 +31,29 @@ const orderSchema = new mongoose.Schema({
     type: String,
     unique: true
   },
+  // Add delivery location fields
+  deliveryLocation: {
+    latitude: {
+      type: Number,
+      required: false
+    },
+    longitude: {
+      type: Number,
+      required: false
+    },
+    accuracy: {
+      type: Number,
+      required: false
+    },
+    timestamp: {
+      type: Number,
+      required: false
+    },
+    address: {
+      type: String,
+      required: false
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

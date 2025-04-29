@@ -10,6 +10,7 @@ const registerRestaurantOwner = async (req, res) => {
 
     const existingOwnerByEmail = await RestaurantOwner.findOne({ email });
     const existingOwnerByUsername = await RestaurantOwner.findOne({ username });
+    const existingOwnerByPhone = await RestaurantOwner.findOne({ phone });
 
     if (existingOwnerByEmail) {
       return res.status(400).json({ message: "Email is already registered!" });
@@ -17,6 +18,10 @@ const registerRestaurantOwner = async (req, res) => {
 
     if (existingOwnerByUsername) {
       return res.status(400).json({ message: "Username is already taken!" });
+    }
+
+    if (existingOwnerByPhone) {
+      return res.status(400).json({ message: "Phone number is already taken!" });
     }
 
     const profile_image = req.file ? req.file.path : null;
@@ -201,11 +206,27 @@ const editRestaurantOwner = async (req, res) => {
   }
 };
 
+const deleteOwnerById = async(req,res) => {
+  const ownerId = req.params.ownerId;
+  try {
+    const deletedOwner = await RestaurantOwner.findByIdAndDelete(ownerId);
+    if (!deletedOwner) {
+      return res.status(404).json({ message: 'Owner not found' });
+    }
+    res.status(200).json({ message: 'Owner deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting Owner:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+
+}
+
 module.exports = {
   registerRestaurantOwner,
   loginRestaurantOwner,
   profile,
   getAllUsers,
-  editRestaurantOwner
+  editRestaurantOwner,
+  deleteOwnerById
 
 };

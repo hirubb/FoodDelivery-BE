@@ -8,7 +8,7 @@ const RESTAURANT_BASE_URL = process.env.RESTAURANT_BASE_URL;
 exports.placeOrder = async (req, res) => {
   // Get customer information and total amount directly from request body
   const customerId = req.userId;
-  const { restaurantId, items, totalAmount } = req.body;
+  const { restaurantId, items, totalAmount, deliveryLocation } = req.body;
 
   try {
     console.log("➡️ Incoming Order Request:", req.body);
@@ -108,13 +108,31 @@ exports.placeOrder = async (req, res) => {
       });
     }
 
-    // ✅ 6. Save the order with generated orderId and total amount
+    // ✅ 6. Process location data
+    let locationData = null;
+    if (deliveryLocation) {
+      console.log("✅ Delivery location provided:", deliveryLocation);
+      locationData = {
+        latitude: deliveryLocation.latitude,
+        longitude: deliveryLocation.longitude,
+        accuracy: deliveryLocation.accuracy,
+        timestamp: deliveryLocation.timestamp
+      };
+
+      // Optional: You could use a geocoding service here to get the address from coordinates
+      // For example: locationData.address = await getAddressFromCoordinates(locationData);
+    } else {
+      console.log("⚠️ No delivery location provided");
+    }
+
+    // ✅ 7. Save the order with generated orderId, total amount, and location
     const newOrder = new Order({
       orderId: uuidv4(),
       customerId,
       restaurantId,
       items,
       totalAmount,
+      deliveryLocation: locationData,
       status: "Pending",
       paymentStatus: "Unpaid"
     });
@@ -330,7 +348,7 @@ exports.updatePaymentStatus = async (req, res) => {
 
     // If payment is successful, update the order status to Confirmed
     if (paymentStatus === 'Paid') {
-      order.status = "Confirmed";
+      order.status = "Pending";
       // Add timestamp for when payment was confirmed
       order.paymentConfirmedAt = new Date();
       console.log(`Order ${orderId} status updated to Confirmed`);
@@ -366,6 +384,205 @@ exports.updatePaymentStatus = async (req, res) => {
     });
   }
 };
+
+// Update an order including location
+exports.updateOrder = async (req, res) => {
+  const { id } = req.params;
+  const { items, totalAmount, deliveryLocation } = req.body;
+
+  try {
+    // Check if order exists
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found"
+      });
+    }
+
+    // Check if order belongs to the authenticated user
+    if (order.customerId.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: "You are not authorized to update this order"
+      });
+    }
+
+    // Check if order can be modified (only allow updates on Pending orders)
+    if (order.status !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot update an order that is already being processed"
+      });
+    }
+
+    // Update the order
+    if (items) order.items = items;
+    if (totalAmount) order.totalAmount = totalAmount;
+    if (deliveryLocation) order.deliveryLocation = deliveryLocation;
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Order updated successfully",
+      order
+    });
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update order",
+      details: error.message
+    });
+  }
+};
+
+// Delete an order
+exports.deleteOrder = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Check if order exists
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found"
+      });
+    }
+
+    // Check if order belongs to the authenticated user
+    if (order.customerId.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: "You are not authorized to delete this order"
+      });
+    }
+
+    // Check if order can be deleted (only allow deletion of Pending orders)
+    if (order.status !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot delete an order that is already being processed"
+      });
+    }
+
+    // Delete the order
+    await Order.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Order deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete order",
+      details: error.message
+    });
+  }
+};
+
+exports.getIncome = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { dateRange, groupBy } = req.body; // groupBy can be 'day' or 'month'
+
+    if (!restaurantId) {
+      return res.status(400).json({ error: "Restaurant ID is required" });
+    }
+
+    // Build the match stage for aggregation
+    const matchStage = {
+      restaurantId: restaurantId,
+      createdAt: {
+        $gte: new Date(dateRange.start), // assuming start and end dates come from frontend
+        $lte: new Date(dateRange.end)
+      },
+      paymentStatus: 'Paid' // Only count paid orders
+    };
+
+    // Define group format
+    let groupStage;
+    if (groupBy === 'month') {
+      groupStage = {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        totalIncome: { $sum: "$totalAmount" }
+      };
+    } else {
+      // default is grouping by day
+      groupStage = {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+          day: { $dayOfMonth: "$createdAt" }
+        },
+        totalIncome: { $sum: "$totalAmount" }
+      };
+    }
+
+    const incomeData = await Order.aggregate([
+      { $match: matchStage },
+      { $group: groupStage },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } } // sort by time ascending
+    ]);
+
+    // Format the data nicely for frontend (x, y)
+    const formattedData = incomeData.map(item => {
+      const { year, month, day } = item._id;
+      const dateString = groupBy === 'month'
+        ? `${year}-${String(month).padStart(2, '0')}`
+        : `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      return {
+        date: dateString,
+        income: item.totalIncome
+      };
+    });
+
+    res.json({ success: true, data: formattedData });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error fetching Income" });
+  }
+};
+
+exports.orderStatusUpdate = async (req, res) => {
+
+  const { orderId } = req.params; // Get orderId from URL params
+  const { newStatus } = req.body;
+
+  try {
+    // Find the order by orderId
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Update the order status
+    order.status = newStatus;
+
+    // Save the updated order
+    await order.save();
+
+    // Return the updated order data as the response
+    return res.status(200).json({ message: 'Order status updated successfully', order });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Failed to update order status', error: err.message });
+  }
+
+
+
+
+}
 
 
 
